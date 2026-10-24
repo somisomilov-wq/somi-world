@@ -121,7 +121,7 @@
     if (started) return; started = true;
     goFull();
     const cont = menu && pick === 0, ch = cont ? save.ch : 1;
-    if (menu && !cont) SomiSave.clear();
+    if (menu && !cont) { SomiSave.clear(); try { localStorage.removeItem('somi-quest-v1'); } catch (e) {} }
     if (window.SomiSound) { SomiSound.unlock(); SomiSound.play('start'); setTimeout(() => SomiSound.say('소미', '소미 월드! 시작!'), 500); }
     el.querySelector('.cr').textContent = '1';
     el.classList.add('go');
@@ -129,7 +129,8 @@
     else el.querySelector('.ttl-press').innerHTML = 'GET READY!<small>소미의 하루가 시작돼요</small>';
     setTimeout(() => {
       el.classList.add('out');
-      if (cont && ch >= 2 && window.SomiGames) { SomiGames.openHub(ch); SomiGames.afterClose = () => { if (onStart) onStart(); }; }
+      if (cont && ch >= 2 && ch <= 4) { if (window.SomiSound) SomiSound.music('world'); if (onStart) onStart('school'); }
+      else if (cont && ch >= 5 && window.SomiGames) { SomiGames.openHub(ch); SomiGames.afterClose = () => { if (onStart) onStart('school'); }; }
       else { if (window.SomiSound) SomiSound.music('world'); if (onStart) onStart(); }
     }, 1100);
     setTimeout(() => el.remove(), 1700);

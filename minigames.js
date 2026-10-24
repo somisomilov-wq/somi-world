@@ -163,11 +163,11 @@
   function open() { active = true; root.hidden = false; }
   let afterClose = null;
   function close() { stopGame(); active = false; root.hidden = true; onKey = null; if (window.SomiSound) SomiSound.music('world'); const f = afterClose; afterClose = null; if (f) f(); }
-  root.querySelector('.mg-x').addEventListener('click', () => { if (game) openHub(chapter.ch); else close(); });
+  root.querySelector('.mg-x').addEventListener('click', () => { if (questCb) questEnd(false); else if (game) openHub(chapter.ch); else close(); });
   window.addEventListener('keydown', ev => {
     if (!active || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     ev.stopImmediatePropagation(); ev.preventDefault();
-    if (ev.key === 'Escape') { if (game) openHub(chapter.ch); else close(); return; }
+    if (ev.key === 'Escape') { if (questCb) questEnd(false); else if (game) openHub(chapter.ch); else close(); return; }
     if (onKey) onKey(ev);
   }, true);
   window.addEventListener('keyup', ev => { if (!active) return; ev.stopImmediatePropagation(); if (onKeyUp) onKeyUp(ev); }, true);
@@ -235,9 +235,33 @@
     body.querySelector('.mg-btn').addEventListener('click', start);
     onKey = ev => { if (isGo(ev.key)) start(); };
   }
+  // 3D 학교에서 퀘스트로 미니게임 하나만 실행: SomiGames.play('c2-01', win => ...)
+  let questCb = null;
+  function play(id, cb) {
+    const c = CH.find(x => x.missions && x.missions.some(m => m[0] === id));
+    if (!c || !c.theme) { if (cb) cb(false); return; }
+    stopGame(); open(); chapter = c; questCb = cb || null;
+    if (window.SomiSound) SomiSound.music('game');
+    root.style.setProperty('--mgbg', c.theme.bg);
+    runMission(c, c.missions.findIndex(m => m[0] === id));
+  }
+  function questEnd(win) { const f = questCb; questCb = null; close(); if (f) f(win); }
   function finish(c, i, win, extra) {
     stopGame();
     const [id] = c.missions[i];
+    if (questCb) {
+      if (window.SomiSound) SomiSound.say('소미', win ? '야호! 성공!' : '아깝다! 다시 해 볼래!');
+      const fresh = win && window.SomiWallet ? SomiWallet.award(id) : false;
+      if (win && !fresh) sfx.win(); if (!win) sfx.bad();
+      body.innerHTML = '<div class="mg-result">' + (win ? '<h3>성공!</h3><span class="coin">소</span><p>' + (fresh ? '소미 코인 1개를 받았어요!' : '이미 코인을 받은 미션이에요. 그래도 최고!') + '</p>'
+        : '<h3>아깝다!</h3><p>조금만 더 하면 될 것 같아. 다시 해 볼까?</p>') + '<div class="mg-row">' + (win
+        ? '<button type="button" class="mg-btn main" data-a="go">계속하기 ▶<kbd>스페이스</kbd></button>'
+        : '<button type="button" class="mg-btn main" data-a="again">다시 하기<kbd>스페이스</kbd></button><button type="button" class="mg-btn" data-a="quit">나중에 하기<kbd>Esc</kbd></button>') + '</div></div>';
+      const act = a => { if (a === 'again') runMission(c, i); else questEnd(a === 'go'); };
+      body.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => act(b.dataset.a)));
+      onKey = ev => { if (isGo(ev.key)) act(win ? 'go' : 'again'); };
+      return;
+    }
     const nextI = i + 1 < c.missions.length ? i + 1 : -1;
     let fresh = false;
     if (window.SomiSound) SomiSound.say('소미', win ? '야호! 성공!' : '아깝다! 다시 해 볼래!');
@@ -985,5 +1009,5 @@
     return { key: ev => { if (ev.key === 'ArrowLeft') step(-1); else if (ev.key === 'ArrowRight') step(1); else if (ev.key === ' ' || ev.key === 'ArrowUp') step(face); }, destroy: stop };
   };
 
-  window.SomiGames = { openHub, close, unlocked, get active() { return active; }, get chapter() { return chapter && chapter.ch; }, set afterClose(f) { afterClose = f; } };
+  window.SomiGames = { openHub, close, unlocked, play, get active() { return active; }, get chapter() { return chapter && chapter.ch; }, set afterClose(f) { afterClose = f; } };
 })();

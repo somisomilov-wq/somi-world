@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1b1640">
-<link rel="manifest" href="manifest.json?v=1792840149">
+<link rel="manifest" href="manifest.json?v=1792846220">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>소미 월드</title>
@@ -189,12 +189,14 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="config.js?v=1792840149"></script>
-<script src="audio.js?v=1792840149"></script>
-<script src="title.js?v=1792840149"></script>
-<script src="missions.js?v=1792840149"></script>
-<script src="wallet.js?v=1792840149"></script>
-<script src="minigames.js?v=1792840149"></script>
+<script src="config.js?v=1792846220"></script>
+<script src="audio.js?v=1792846220"></script>
+<script src="title.js?v=1792846220"></script>
+<script src="missions.js?v=1792846220"></script>
+<script src="quests.js?v=1792846220"></script>
+<script src="wallet.js?v=1792846220"></script>
+<script src="minigames.js?v=1792846220"></script>
+<script src="style.js?v=1792846220"></script>
 <script>
 (function () {
   // ===================================================================
@@ -752,6 +754,131 @@
     addObstacle(-36, 36, SCHOOL_GATE_Z + 26.5, SCHOOL_GATE_Z + 40);
   }
   paved(-3, 3, 46.4, SCHOOL_GATE_Z, paverM(6, 11.6), 0.03);
+  // ===================================================================
+  // School interior (RPG): hallway, 1-3 classroom, care room, restroom, cafeteria
+  // Built far from the town at z = IZ; the entrance door teleports between the field and the hallway
+  // ===================================================================
+  const IZ = -200, WALL_H = 3.2;
+  const SCHOOL_DOOR = { x: 0, z: SCHOOL_GATE_Z + 25.6 };   // outside, in front of the building
+  const HALL_DOOR = { x: 0, z: IZ - 1.3 };                 // inside, at the entrance
+  // rooms north of the hallway (z 2..12 local); door x on the hallway wall
+  const ROOMS = {
+    '교실': { x0: -26, x1: -12, door: -19, floor: 0xd9b98a },
+    '돌봄교실': { x0: -12, x1: 0, door: -6, floor: 0xcfe3c4 },
+    '화장실': { x0: 0, x1: 6, door: 3, floor: 0xdbe7ec },
+    '급식실': { x0: 6, x1: 26, door: 16, floor: 0xefe4d2 }
+  };
+  // where people stand and where lost things lie, per place (world coordinates)
+  const SPOTS = {
+    '교실': [[-19, IZ + 9.6], [-22.5, IZ + 6.5], [-15.5, IZ + 6.5], [-24, IZ + 3.6], [-14, IZ + 3.6], [-19, IZ + 4.2]],
+    '돌봄교실': [[-6, IZ + 9.4], [-9.5, IZ + 6], [-2.5, IZ + 6.5], [-10.5, IZ + 3.4], [-1.5, IZ + 3.4]],
+    '화장실': [[3, IZ + 6], [1.5, IZ + 4], [4.5, IZ + 4]],
+    '급식실': [[16, IZ + 9.8], [10, IZ + 6.5], [21, IZ + 6.5], [8, IZ + 3.4], [24, IZ + 3.4], [16, IZ + 4]],
+    '복도': [[-21, IZ + 0.6], [-9, IZ - 0.6], [5, IZ + 0.6], [11, IZ - 0.8], [21, IZ + 0.5], [-3.5, IZ - 0.9], [-15, IZ - 0.7]],
+    '운동장': [[-6, SCHOOL_GATE_Z + 9], [6, SCHOOL_GATE_Z + 12], [-12, SCHOOL_GATE_Z + 16], [12, SCHOOL_GATE_Z + 6], [0, SCHOOL_GATE_Z + 18], [-16, SCHOOL_GATE_Z + 7], [16, SCHOOL_GATE_Z + 17]]
+  };
+  const SINK = { x: 1.0, z: IZ + 8.6 };
+  {
+    const W = new THREE.Group(); scene.add(W);
+    const wallM = M(0xf4efe6), trimM = M(0x9fb7c9);
+    function wall(x0, z0, x1, z1, mat) {
+      const w = Math.abs(x1 - x0) || 0.25, d = Math.abs(z1 - z0) || 0.25;
+      box(w, WALL_H, d, mat || wallM, W, (x0 + x1) / 2, WALL_H / 2, IZ + (z0 + z1) / 2, false);
+      box(w + 0.02, 0.5, d + 0.02, trimM, W, (x0 + x1) / 2, 0.25, IZ + (z0 + z1) / 2, false);
+      addObstacle(Math.min(x0, x1) - (x0 === x1 ? 0.15 : 0), Math.max(x0, x1) + (x0 === x1 ? 0.15 : 0), IZ + Math.min(z0, z1) - (z0 === z1 ? 0.15 : 0), IZ + Math.max(z0, z1) + (z0 === z1 ? 0.15 : 0));
+      obstacles[obstacles.length - 1].wall = true;
+    }
+    // a wall along x with door gaps [[centre, width], ...]
+    function wallX(z, x0, x1, gaps) {
+      let x = x0;
+      gaps.sort((a, b) => a[0] - b[0]).forEach(([c, w]) => { if (c - w / 2 > x) wall(x, z, c - w / 2, z); box(w, WALL_H - 2.3, 0.25, wallM, W, c, 2.3 + (WALL_H - 2.3) / 2, IZ + z, false); x = c + w / 2; });
+      if (x < x1) wall(x, z, x1, z);
+    }
+    const floorM = c => std(c, { roughness: 0.55 });
+    // floors and ceiling
+    box(52, 0.1, 4, floorM(0xe9e1d2), W, 0, 0, IZ, false);
+    Object.values(ROOMS).forEach(r => box(r.x1 - r.x0, 0.1, 10, floorM(r.floor), W, (r.x0 + r.x1) / 2, 0, IZ + 7, false));
+    const ceil = add(new THREE.PlaneGeometry(52, 14.5), M(0xfbfaf6), W, 0, WALL_H, IZ + 5, false); ceil.rotation.x = Math.PI / 2;
+    const lightM = std(0xffffff, { emissive: 0xfff6e0, emissiveIntensity: 0.9 });
+    for (let x = -22; x <= 22; x += 6) box(1.2, 0.04, 0.5, lightM, W, x, WALL_H - 0.03, IZ, false);
+    Object.values(ROOMS).forEach(r => { for (let x = r.x0 + 2.5; x < r.x1 - 1; x += 4.5) [5, 9].forEach(z => box(1.2, 0.04, 0.5, lightM, W, x, WALL_H - 0.03, IZ + z, false)); });
+    // outer walls, hallway wall with doors, room dividers
+    wallX(-2, -26, 26, [[0, 2.8]]);
+    addObstacle(-1.4, 1.4, IZ - 2.15, IZ - 1.85); obstacles[obstacles.length - 1].wall = true;   // glass entrance door
+    wall(-26, -2, -26, 12); wall(26, -2, 26, 12); wall(-26, 12, 26, 12);
+    wallX(2, -26, 26, Object.values(ROOMS).map(r => [r.door, r === ROOMS['급식실'] ? 2.6 : 1.8]));
+    wall(-12, 2, -12, 12); wall(0, 2, 0, 12); wall(6, 2, 6, 12);
+    // windows: hallway south side and the north side of every room
+    const winM = std(0xbfe3f5, { emissive: 0x9fd2ee, emissiveIntensity: 0.35, roughness: 0.2 });
+    for (let x = -23; x <= 23; x += 5) if (Math.abs(x) > 3) box(2.6, 1.3, 0.05, winM, W, x, 1.8, IZ - 1.86, false);
+    for (let x = -24; x <= 24; x += 4) box(2.4, 1.3, 0.05, winM, W, x, 1.9, IZ + 11.86, false);
+    // entrance: glass door and the shoe lockers
+    box(2.6, 2.3, 0.06, std(0xcfe9f3, { transparent: true, opacity: 0.45, roughness: 0.1 }), W, 0, 1.15, IZ - 2.05, false);
+    sign('현관 · 운동장', 1.8, 0.4, '#1f7a52', '#ffffff', W, 0, 2.7, IZ - 1.84, 0, { border: '#ffffff' });
+    const lockerM = M(0xc9a27a);
+    [-3.6, 3.6].forEach(x => { box(2.2, 1.5, 0.5, lockerM, W, x, 0.75, IZ - 1.6); addObstacle(x - 1.1, x + 1.1, IZ - 1.9, IZ - 1.3);
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) box(0.46, 0.38, 0.02, M(0xb08860), W, x - 0.8 + i * 0.53, 0.3 + j * 0.46, IZ - 1.34, false); });
+    // door plaques hanging over the hallway, readable from both ways
+    const plaque = (text, x, color) => { const p = sign(text, 1.7, 0.42, color, '#ffffff', W, x, 2.75, IZ + 1.5, Math.PI / 2, { border: '#ffffff' }); p.scale.z = 0.5; return p; };
+    plaque('1학년 3반', ROOMS['교실'].door, '#e0745a');
+    plaque('돌봄교실', ROOMS['돌봄교실'].door, '#4aa38a');
+    plaque('화장실 🚺', ROOMS['화장실'].door, '#5b8fd1');
+    plaque('급식실', ROOMS['급식실'].door, '#e0a03a');
+    sign('◀ 1학년 3반 · 돌봄교실      화장실 · 급식실 ▶', 4.2, 0.45, '#1f7a52', '#ffffff', W, 0, 2.6, IZ + 1.86, Math.PI, { border: '#ffffff' });
+    // hallway life: notice boards and plants
+    [[-16, '우리 반 자랑\n🌻 🎨 ⭐'], [10, '이달의 책\n📚 숫자몬 대모험'], [21, '손 씻기 🧼\n30초 뽀득뽀득']].forEach(([x, t]) => sign(t, 2.2, 1.1, '#fff6dc', '#7b3f2a', W, x, 1.7, IZ - 1.83, 0, { border: '#e0a03a' }));
+    [[-24.5, -1.2], [24.5, -1.2], [-12.6, 1.4], [6.6, 1.4]].forEach(([x, z]) => { add(new THREE.CylinderGeometry(0.25, 0.2, 0.45, 12), M(0xc97b4a), W, x, 0.22, IZ + z); add(new THREE.IcosahedronGeometry(0.42, 1), M(0x4f9a52), W, x, 0.75, IZ + z); });
+
+    // --- 1학년 3반 교실 ---
+    const board = canvasTex(512, 256, (g) => {
+      g.fillStyle = '#2f5d46'; g.fillRect(0, 0, 512, 256); g.strokeStyle = '#a0784e'; g.lineWidth = 14; g.strokeRect(7, 7, 498, 242);
+      g.fillStyle = '#f4f1e8'; g.font = '40px "Jua", sans-serif'; g.textAlign = 'center';
+      g.fillText('1학년 3반', 256, 70); g.font = '30px "Jua", sans-serif'; g.fillText('오늘도 즐겁게! 😊', 256, 130); g.fillText('7 × 8 = 56', 256, 190);
+    });
+    box(5, 1.6, 0.06, std(0xffffff, { map: board }), W, -19, 1.7, IZ + 11.82, false);
+    box(1.8, 0.8, 0.8, M(0x8a6a4a), W, -19, 0.4, IZ + 10.3); addObstacle(-19.9, -18.1, IZ + 9.9, IZ + 10.7);
+    const deskM = M(0xe0c79a), legM = M(0x7d8a96), chairM = M(0x6fa6d6);
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+      const x = -23.4 + c * 2.9, z = IZ + 4.4 + r * 1.7;
+      box(1.1, 0.06, 0.6, deskM, W, x, 0.72, z); box(0.06, 0.7, 0.5, legM, W, x - 0.45, 0.36, z, false); box(0.06, 0.7, 0.5, legM, W, x + 0.45, 0.36, z, false);
+      box(0.5, 0.05, 0.45, chairM, W, x, 0.42, z - 0.55, false); box(0.5, 0.45, 0.05, chairM, W, x, 0.66, z - 0.8, false);
+      addObstacle(x - 0.55, x + 0.55, z - 0.3, z + 0.3);
+    }
+    box(0.5, 1.4, 3.6, M(0xd7b98c), W, -25.6, 0.7, IZ + 6.5); addObstacle(-26, -25.3, IZ + 4.7, IZ + 8.3);
+    ['#ff8fa3', '#8fd3ff', '#ffd23f', '#9df59a'].forEach((c, i) => box(0.3, 0.3, 0.6, M(parseInt(c.slice(1), 16)), W, -25.4, 1.1, IZ + 5.2 + i * 0.85, false));
+
+    // --- 돌봄교실 (방과후: 책장, 매트, 컴퓨터, 주판) ---
+    box(11.6, 0.03, 5, M(0xf6d6a8), W, -6, 0.07, IZ + 7.5, false);
+    box(5, 2, 0.5, M(0xb98d5e), W, -6, 1, IZ + 11.6); addObstacle(-8.5, -3.5, IZ + 11.3, IZ + 12);
+    for (let i = 0; i < 18; i++) box(0.18, 0.42, 0.3, M([0xe57373, 0x64b5f6, 0xffd54f, 0x81c784, 0xba68c8][i % 5]), W, -8.2 + i * 0.25, 1.55 - (i % 2) * 0.6, IZ + 11.45, false);
+    [[-9.8, 5.2, 0xff8fa3], [-2.4, 8.4, 0x8fd3ff], [-3.6, 4.6, 0xffd23f]].forEach(([x, z, c]) => { const b = add(new THREE.SphereGeometry(0.55, 16, 12), M(c), W, x, 0.38, IZ + z); b.scale.y = 0.7; });
+    [-10.6, -9.2].forEach(x => { box(1.2, 0.06, 0.7, deskM, W, x, 0.72, IZ + 9.8); box(0.7, 0.45, 0.06, M(0x2b2f33), W, x, 1.0, IZ + 10.05, false); box(0.62, 0.36, 0.02, std(0x7fd1ff, { emissive: 0x3fa9e0, emissiveIntensity: 0.6 }), W, x, 1.0, IZ + 10.01, false); });
+    addObstacle(-11.4, -8.5, IZ + 9.4, IZ + 10.2);
+    box(1, 0.08, 0.5, M(0x8a5a2b), W, -1.6, 0.75, IZ + 10.6); for (let i = 0; i < 5; i++) add(new THREE.SphereGeometry(0.06, 8, 6), M(0xd9534f), W, -1.95 + i * 0.17, 0.82, IZ + 10.6, false);
+    box(1.4, 0.06, 0.8, deskM, W, -1.6, 0.7, IZ + 10.6); addObstacle(-2.4, -0.8, IZ + 10.2, IZ + 11);
+    sign('돌봄교실 · 방과후', 2.6, 0.5, '#ffffff', '#4aa38a', W, -6, 2.6, IZ + 11.84, Math.PI, { border: '#4aa38a' });
+
+    // --- 화장실 ---
+    box(1.2, 0.9, 4, M(0xf2f6f8), W, 0.75, 0.45, IZ + 8.6); addObstacle(0, 1.4, IZ + 6.6, IZ + 10.6);
+    [7.6, 8.6, 9.6].forEach(z => { add(new THREE.CylinderGeometry(0.22, 0.18, 0.12, 16), M(0xffffff), W, 0.75, 0.95, IZ + z, false); box(0.05, 0.6, 0.6, std(0xd8eef7, { roughness: 0.1, metalness: 0.3 }), W, 0.15, 1.7, IZ + z, false); });
+    [2.6, 3.9, 5.2].forEach(x => { box(0.08, 2, 1.6, M(0xf3b5c4), W, x - 0.62, 1, IZ + 11.1, false); box(1.1, 2, 0.06, M(0xf8c9d4), W, x, 1, IZ + 10.3, false); });
+    box(5.8, 2, 0.08, M(0xf3b5c4), W, 3, 1, IZ + 10.3, false); addObstacle(1.6, 6, IZ + 10.1, IZ + 12);
+    sign('🧼 손을 깨끗이', 1.6, 0.4, '#ffffff', '#5b8fd1', W, 0.16, 2.35, IZ + 8.6, Math.PI / 2, { border: '#5b8fd1' });
+
+    // --- 급식실 ---
+    box(14, 1, 1, M(0xc7ccd1), W, 16, 0.5, IZ + 11.3); addObstacle(9, 23, IZ + 10.8, IZ + 12);
+    [0xffd23f, 0xff8a65, 0x9ccc65, 0xfff1d6, 0x8d6e63, 0xff8fa3].forEach((c, i) => box(1.6, 0.18, 0.7, M(c), W, 10.4 + i * 2.2, 1.08, IZ + 11.3, false));
+    sign('오늘의 메뉴\n🍙 주먹밥 · 🥕 당근 · 🥛 우유', 3.6, 1.1, '#fff6dc', '#7b3f2a', W, 16, 2.3, IZ + 11.84, Math.PI, { border: '#e0a03a' });
+    [[10, 5.2], [16, 5.2], [22, 5.2], [10, 8], [22, 8]].forEach(([x, z]) => {
+      box(3.6, 0.08, 1.1, M(0xf2e6cf), W, x, 0.72, IZ + z); box(0.08, 0.7, 0.9, legM, W, x, 0.36, IZ + z, false);
+      [-0.85, 0.85].forEach(dz => box(3.4, 0.08, 0.35, M(0x6fa6d6), W, x, 0.42, IZ + z + dz, false));
+      for (let i = 0; i < 3; i++) box(0.6, 0.04, 0.42, M(0x9fb0bf), W, x - 1.1 + i * 1.1, 0.78, IZ + z, false);
+      addObstacle(x - 1.8, x + 1.8, IZ + z - 0.55, IZ + z + 0.55);
+    });
+  }
+  // the school building's front door on the field
+  box(2.6, 2.4, 0.2, std(0xcfe9f3, { transparent: true, opacity: 0.7, roughness: 0.1 }), scene, 0, 1.2, SCHOOL_GATE_Z + 26.45, false);
+  sign('현관', 1.2, 0.4, '#1f7a52', '#ffffff', scene, 0, 2.7, SCHOOL_GATE_Z + 26.3, Math.PI, { border: '#ffffff' });
   // shops across the road
   {
     const shops = new THREE.Group();
@@ -830,9 +957,22 @@
       add(rbox(0.62, 0.66, 0.26, 0.1), S(o.bag), body, 0, 1.2, -0.38);
       [-0.2, 0.2].forEach(x => box(0.07, 0.72, 0.05, S(o.bag), body, x, 1.24, 0.25));
     }
+    if (o.coat) {
+      // open jacket: a slightly bigger shell with the shirt showing down the middle
+      const coatM = S(o.coat);
+      const cf = canvasTex(128, 128, (g) => {
+        g.fillStyle = '#' + new THREE.Color(o.coat).getHexString(); g.fillRect(0, 0, 128, 128);
+        g.fillStyle = '#' + new THREE.Color(o.top).getHexString(); g.fillRect(44, 0, 40, 128);
+        g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(40, 0, 4, 128); g.fillRect(84, 0, 4, 128);
+        g.fillStyle = 'rgba(255,255,255,.8)'; [30, 64, 98].forEach(y => { g.beginPath(); g.arc(34, y, 5, 0, 7); g.fill(); });
+      });
+      const coatF = std(0xffffff, { map: cf, roughness: 0.6 });
+      add(rbox(0.96, 0.9, 0.56, 0.13), [coatM, coatM, coatM, coatM, coatF, coatM], k.torso, 0, -0.04, 0);
+    }
+    const sleeveM = o.coat ? S(o.coat) : topM;
     k.arms = [-1, 1].map(side => {
       const sh = new THREE.Group(); sh.position.set(side * 0.6, 1.5, 0); body.add(sh);
-      add(rbox(0.32, 0.5, 0.38, 0.1), topM, sh, 0, -0.18, 0);
+      add(rbox(o.coat ? 0.36 : 0.32, o.coat ? 0.6 : 0.5, o.coat ? 0.42 : 0.38, 0.1), sleeveM, sh, 0, o.coat ? -0.22 : -0.18, 0);
       add(rbox(0.3, 0.36, 0.34, 0.1), skinM, sh, 0, -0.58, 0);
       sh.rotation.z = side * 0.06;
       return sh;
@@ -848,6 +988,14 @@
     if (o.style === 'pony') {
       k.tail = add(rbox(0.28, 0.7, 0.28, 0.13), hairM, head, 0, -0.2, -0.55); k.tail.rotation.x = 0.25;
       box(0.3, 0.08, 0.3, S(o.tie || 0xff7a9a), head, 0, 0.16, -0.5, false);
+    }
+    if (o.style === 'long') {
+      add(rbox(0.96, 1.25, 0.24, 0.12), hairM, head, 0, -0.32, -0.36);
+      [-1, 1].forEach(side => add(rbox(0.16, 1.05, 0.5, 0.07), hairM, head, side * 0.46, -0.3, -0.1));
+    }
+    if (o.style === 'bun') {
+      add(new THREE.SphereGeometry(0.24, 16, 12), hairM, head, 0, 0.58, -0.12);
+      box(0.36, 0.07, 0.36, S(o.tie || 0xff7a9a), head, 0, 0.42, -0.12, false);
     }
     if (o.style === 'pigtails') {
       [-1, 1].forEach(side => {
@@ -880,11 +1028,21 @@
     return a;
   }
 
-  const somi = makeKid({
+  const SOMI_BASE = {
     scale: 0.42, skin: 0xf7dcc6, hair: 0x1c1a1d, top: 0xbcc2b6, trim: 0xaeb4a8, pants: 0xb3b8ad,
     boots: 0xf1ede6, style: 'pony', bag: 0xff8fa3, tie: 0xff8fa3, lashes: true, logo: '⭐'
-  });
+  };
+  let somi = makeKid(Object.assign({}, SOMI_BASE, window.SomiStyle ? SomiStyle.outfit() : {}));
   scene.add(somi.root);
+  // closet (style.js) swaps Somi's look; the front pose turns the camera around to face her
+  window.__somiDress = (outfit) => {
+    const old = somi.root;
+    somi = makeKid(Object.assign({}, SOMI_BASE, outfit));
+    somi.root.position.copy(old.position); somi.root.rotation.copy(old.rotation);
+    scene.remove(old); scene.add(somi.root);
+  };
+  let posing = false;
+  window.__somiPose = (on) => { posing = on; };
   const mom = makeAdult({ skin: 0xf3d6c0, hair: 0x3a2a22, top: 0xd9c6a5, pants: 0x4a5566, boots: 0xefefef });
   scene.add(mom.root);
   const haeun = makeKid({
@@ -903,6 +1061,34 @@
   const monBelly = add(new THREE.CircleGeometry(0.18, 18), new THREE.MeshStandardMaterial({ map: label('7', 128, 128, '#fff4d6', '#ff7a59', 96) }), mon, 0, 0.32, 0.4, false);
   mon.scale.setScalar(0.55);
   scene.add(mon);
+
+  // ===================================================================
+  // School people (RPG). 하은이 reuses the walking-to-school model
+  // ===================================================================
+  const kid = (o) => makeKid(Object.assign({ scale: 0.42, skin: 0xf5d8c2, boots: 0xf7f2ea, lashes: true }, o));
+  const NPC = {
+    '하은이': { m: haeun, home: '교실' },
+    '소정이': { m: kid({ hair: 0x3b2a20, top: 0xb39ddb, trim: 0x9575cd, pants: 0x4a5a78, style: 'bob', logo: '🎀' }), home: '교실' },
+    '안채은': { m: kid({ hair: 0x2a2220, top: 0xffb74d, trim: 0xf59e3a, pants: 0x6d4c41, style: 'pony', tie: 0x64b5f6, logo: '🎨' }), home: '교실' },
+    '문소리': { m: kid({ hair: 0x4a3426, top: 0x81d4fa, trim: 0x4fc3f7, pants: 0x37474f, style: 'pigtails', tie: 0xff8fa3, logo: '💻' }), home: '돌봄교실' },
+    '태린이': { m: kid({ hair: 0x1c1a1d, top: 0xa5d6a7, trim: 0x81c784, pants: 0x455a64, style: 'pony', tie: 0xffd23f, logo: '⚽' }), home: '운동장' },
+    '서연이': { m: kid({ hair: 0x5d4037, top: 0xf48fb1, trim: 0xec7aa0, pants: 0x5c6bc0, style: 'bob', logo: '🍓' }), home: '급식실' },
+    '선생님': { m: makeAdult({ skin: 0xf3d6c0, hair: 0x2b201b, top: 0x7e9cc9, pants: 0x3f4a5a, boots: 0x5a4636 }), home: '교실' },
+    '영양사 선생님': { m: makeAdult({ skin: 0xf1d2bb, hair: 0x3a2a22, top: 0xffffff, pants: 0x9aa4ad, boots: 0xffffff, logo: '🍙' }), home: '급식실' },
+    '돌봄 선생님': { m: makeAdult({ skin: 0xf5d9c4, hair: 0x4a3426, top: 0xf6c177, pants: 0x5a6b7a, boots: 0x8d6e63, style: 'pony' }), home: '돌봄교실' }
+  };
+  // white cook's hat for the dietitian
+  add(new THREE.CylinderGeometry(0.42, 0.38, 0.5, 16), M(0xffffff), NPC['영양사 선생님'].m.head, 0, 0.62, 0);
+  Object.values(NPC).forEach(n => { if (n.m !== haeun) scene.add(n.m.root); });
+  // floating marker over the person to talk to next
+  const bang = new THREE.Sprite(new THREE.SpriteMaterial({ map: label('!', 128, 128, 'rgba(0,0,0,0)', '#ffb300', 120), depthTest: false }));
+  bang.scale.set(0.7, 0.7, 1); bang.renderOrder = 5; bang.visible = false; scene.add(bang);
+  // collectibles: emoji sprites that bob and get picked up by walking into them
+  const emojiTex = {};
+  function emojiSprite(e) {
+    const t = emojiTex[e] || (emojiTex[e] = canvasTex(128, 128, g => { g.font = '96px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, 64, 72); }));
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t })); s.scale.set(0.6, 0.6, 1); scene.add(s); return s;
+  }
 
   // ===================================================================
   // Wayfinding: signposts, floating marker, ground chevrons, HUD compass
@@ -942,6 +1128,7 @@
   function guideTarget() {
     if (state === 'toElevator') return { x: 20.7, y: F15, z: 5.95, name: '엘리베이터', rest: 0 };
     if (state === 'boarding') return { x: CX, y: F15, z: CZ, name: '엘리베이터 안', rest: 0 };
+    if (state === 'school') return schoolGuide();
     if (state === 'walkToSchool') {
       while (routeI < ROUTE.length - 1) { const w = ROUTE[routeI]; if (Math.hypot(P.x - w[0], P.z - w[1]) < w[2] || P.z > w[1] + 1.2) routeI++; else break; }
       let rest = 0; for (let i = routeI; i < ROUTE.length - 1; i++) rest += Math.hypot(ROUTE[i + 1][0] - ROUTE[i][0], ROUTE[i + 1][1] - ROUTE[i][1]);
@@ -1162,6 +1349,7 @@
   }
 
   function interact() {
+    if (state === 'school') { schoolInteract(); return; }
     if (state === 'toElevator' && nearElevatorButton()) {
       land15.btn.material.emissive.setHex(0xffb347);
       setPrompt('');
@@ -1188,6 +1376,186 @@
 
   function nearElevatorButton() { return Math.abs(P.y - F15) < 0.5 && P.x > 19.4; }
 
+  // ===================================================================
+  // School RPG: free roaming + quest chain (quests.js)
+  // stage: talk (giver's intro) → task (collect / visit / wash) → back (report to giver) → game (mini game) → next quest
+  // ===================================================================
+  const QUESTS = window.SOMI_QUESTS || [];
+  const QKEY = 'somi-quest-v1';
+  let qi = 0, qStage = 'talk', qGot = 0, qItems = [], schoolEnded = false;
+  const chOfQuest = q => +q.id.slice(1, q.id.indexOf('-'));
+  function qSave() { try { localStorage.setItem(QKEY, JSON.stringify({ qi, qStage: qStage === 'task' || qStage === 'back' ? qStage : (qStage === 'game' ? 'game' : 'talk'), qGot })); } catch (e) {} }
+  function qLoad() {
+    let s = null; try { s = JSON.parse(localStorage.getItem(QKEY) || 'null'); } catch (e) {}
+    if (s && s.qi >= 0) { qi = s.qi; qStage = s.qStage || 'talk'; qGot = s.qGot || 0; }
+    else { qi = QUESTS.findIndex(q => !(window.SomiWallet && SomiWallet.has(q.id))); if (qi < 0) qi = QUESTS.length; qStage = 'talk'; qGot = 0; }
+  }
+  const curQ = () => QUESTS[qi];
+  function inSchool() { return P.z < -100; }
+  function placeOf(p) {
+    if (p.z > -100) return '운동장';
+    const z = p.z - IZ;
+    if (z <= 2) return '복도';
+    for (const name in ROOMS) { const r = ROOMS[name]; if (p.x >= r.x0 && p.x < r.x1) return name; }
+    return '복도';
+  }
+  // put everybody where they belong for the current quest
+  function placeNPCs() {
+    const used = {};
+    const put = (name, place) => {
+      const n = NPC[name]; if (!n) return;
+      const list = SPOTS[place]; const k = used[place] = (used[place] || 0);
+      const [x, z] = list[k % list.length]; used[place]++;
+      n.m.root.position.set(x, 0, z); n.place = place;
+    };
+    const q = curQ(), busy = {};
+    if (q) { put(q.npc, q.place); busy[q.npc] = 1; if (q.task && q.task.type === 'visit') { put(q.task.npc, q.task.place); busy[q.task.npc] = 1; } }
+    Object.keys(NPC).forEach(name => { if (!busy[name]) put(name, NPC[name].home); });
+  }
+  function spawnItems() {
+    qItems.forEach(it => scene.remove(it.s)); qItems = [];
+    const q = curQ(); if (!q || !q.task || q.task.type !== 'collect' || qStage !== 'task') return;
+    const list = SPOTS[q.task.place].slice().sort(() => Math.random() - 0.5);
+    for (let i = qGot; i < q.task.n; i++) {
+      const [x, z] = list[i % list.length];
+      const s = emojiSprite(q.task.item); const it = { s, x: x + (Math.random() - 0.5) * 1.2, z: z + (Math.random() - 0.5) * 0.8 };
+      s.position.set(it.x, 0.6, it.z); qItems.push(it);
+    }
+  }
+  const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1) - 0xAC00; return w + (c >= 0 && c % 28 ? a : b); };
+  function questHUD() {
+    const q = curQ();
+    if (!q) { setMission('🏫 학교의 하루 끝! 수고했어요'); return; }
+    const chap = (window.SOMI_CHAPTERS || []).find(c => c.ch === chOfQuest(q));
+    if (chap) document.querySelector('.hud.title p').textContent = chap.ch + '장 · ' + chap.title;
+    let goal = '';
+    if (qStage === 'talk') goal = q.place + '의 <b>' + q.npc + '</b>에게 말 걸기';
+    else if (qStage === 'task') goal = '<b>' + q.task.text + '</b>' + (q.task.type === 'collect' ? ' (' + qGot + '/' + q.task.n + ')' : '');
+    else if (qStage === 'back') goal = '<b>' + q.npc + '</b>에게 돌아가기';
+    else goal = '<b>' + q.npc + '</b>에게 말 걸어 다시 도전!';
+    setMission('📜 ' + q.title + ' · ' + goal);
+  }
+  // who should Somi talk to now, and where is the goal
+  function questTargetNPC() {
+    const q = curQ(); if (!q) return null;
+    if (qStage === 'task') return q.task.type === 'visit' ? q.task.npc : null;
+    return q.npc;
+  }
+  function questGoal() {
+    const q = curQ(); if (!q) return null;
+    if (qStage === 'task' && q.task.type === 'collect') {
+      let best = null, bd = 1e9; qItems.forEach(it => { const d = Math.hypot(it.x - P.x, it.z - P.z); if (d < bd) { bd = d; best = it; } });
+      return best ? { x: best.x, z: best.z, place: q.task.place, name: q.task.item + ' 줍기' } : null;
+    }
+    if (qStage === 'task' && q.task.type === 'wash') return { x: SINK.x + 0.8, z: SINK.z, place: '화장실', name: '세면대' };
+    const who = questTargetNPC(); const n = NPC[who];
+    return n ? { x: n.m.root.position.x, z: n.m.root.position.z, place: n.place, name: who } : null;
+  }
+  // route through doors: field ↔ entrance ↔ hallway ↔ room
+  function schoolGuide() {
+    const g = questGoal(); if (!g) return null;
+    const here = placeOf(P);
+    const doorOf = room => ({ x: ROOMS[room].door, z: IZ + 1.0 });
+    let w = { x: g.x, z: g.z, name: g.name };
+    if (here === g.place) w = { x: g.x, z: g.z, name: g.name };
+    else if (here === '운동장') w = { x: SCHOOL_DOOR.x, z: SCHOOL_DOOR.z, name: '학교 현관' };
+    else if (g.place === '운동장') w = here === '복도' ? { x: HALL_DOOR.x, z: HALL_DOOR.z, name: '현관 (운동장)' } : Object.assign(doorOf(here), { name: '복도' });
+    else if (here !== '복도') w = Object.assign(doorOf(here), { name: '복도' });
+    else w = Object.assign(doorOf(g.place), { name: g.place });
+    return { x: w.x, y: 0, z: w.z, name: w.name, rest: 0 };
+  }
+  function startGame() {
+    const q = curQ(); qStage = 'game'; qSave(); questHUD();
+    if (!window.SomiGames || !SomiGames.play) return;
+    SomiGames.play(q.id, win => {
+      if (!win) { questHUD(); return; }
+      talk(q.outro.map(([who, text]) => ({ who, text })), nextQuest);
+    });
+  }
+  function nextQuest() {
+    qi++; qStage = 'talk'; qGot = 0; qSave();
+    const q = curQ();
+    if (window.SomiSave) SomiSave.set(q ? chOfQuest(q) : 5);
+    placeNPCs(); spawnItems(); questHUD();
+    if (!q) endSchool();
+  }
+  function endSchool() {
+    schoolEnded = true;
+    ui.done.querySelector('h2').textContent = '학교의 하루 끝!';
+    ui.done.querySelector('p').innerHTML = '교실, 급식실, 돌봄교실, 운동장을 누비며<br>학교 퀘스트 30개를 모두 해냈어요!<br>이제 태권도에 갈 시간이에요.';
+    const b = ui.done.querySelector('button'); b.textContent = '5장 태권도 가는 길 ▶'; b.onclick = () => { ui.done.hidden = true; SomiGames.openHub(5); };
+    ui.done.hidden = false;
+  }
+  const steps = lines => lines.map(([who, text]) => ({ who, text }));
+  function nearNPC() {
+    let best = null, bd = 2.1;
+    Object.keys(NPC).forEach(name => { const r = NPC[name].m.root.position; const d = Math.hypot(r.x - P.x, r.z - P.z); if (d < bd && Math.abs(r.y - P.y) < 1) { bd = d; best = name; } });
+    return best;
+  }
+  function nearSink() { return placeOf(P) === '화장실' && Math.hypot(P.x - SINK.x, P.z - SINK.z) < 2.2; }
+  function schoolInteract() {
+    const q = curQ();
+    if (inSchool() && Math.hypot(P.x - HALL_DOOR.x, P.z - HALL_DOOR.z) < 1.6) { goOutside(); return true; }
+    if (!inSchool() && Math.hypot(P.x - SCHOOL_DOOR.x, P.z - SCHOOL_DOOR.z) < 2) { goInside(); return true; }
+    if (q && qStage === 'task' && q.task.type === 'wash' && nearSink()) {
+      sfx('pop'); talk(steps(q.task.lines), () => { qStage = 'back'; qSave(); placeNPCs(); questHUD(); }); return true;
+    }
+    const who = nearNPC(); if (!who) return false;
+    const n = NPC[who].m.root; n.rotation.y = Math.atan2(P.x - n.position.x, P.z - n.position.z);
+    if (q && who === questTargetNPC()) {
+      sfx('pop');
+      if (qStage === 'talk') talk(steps(q.intro), () => { if (q.task) { qStage = 'task'; qGot = 0; qSave(); spawnItems(); questHUD(); } else startGame(); });
+      else if (qStage === 'task') talk(steps(q.task.lines), () => { qStage = 'back'; qSave(); questHUD(); });
+      else if (qStage === 'back') talk(steps(q.back), startGame);
+      else talk([{ who: q.npc, text: '다시 해 볼까? 소미는 할 수 있어!' }], startGame);
+      return true;
+    }
+    talk([{ who, text: (window.SOMI_CHATTER || {})[who] || '안녕, 소미야!' }]);
+    return true;
+  }
+  function goInside() { sfx('door'); P.set(HALL_DOOR.x, 0, HALL_DOOR.z + 0.8); yaw = 0; camReady = false; questHUD(); }
+  function goOutside() { sfx('door'); P.set(SCHOOL_DOOR.x, 0, SCHOOL_DOOR.z - 1.2); yaw = Math.PI; camReady = false; questHUD(); }
+  // entering the school world (after the walk to school, or when continuing a save)
+  function startSchool(inside) {
+    state = 'school'; haeunFollow = false; haeunMet = true; schoolEnded = false;
+    ui.done.hidden = true; ui.panel.hidden = true; ui.floor.hidden = true; setPrompt('');
+    if (inside) { P.set(HALL_DOOR.x, 0, HALL_DOOR.z + 0.8); yaw = 0; }
+    vy = 0; floorY = 0; camReady = false;
+    mon.position.set(P.x - 1, 0, P.z - 1);
+    qLoad(); placeNPCs(); spawnItems(); questHUD();
+    if (!curQ()) endSchool();
+  }
+  function updateSchool(dt, t) {
+    const q = curQ();
+    // prompts
+    let pr = '';
+    if (inSchool() && Math.hypot(P.x - HALL_DOOR.x, P.z - HALL_DOOR.z) < 1.6) pr = '<kbd>E</kbd> 운동장으로 나가기';
+    else if (!inSchool() && Math.hypot(P.x - SCHOOL_DOOR.x, P.z - SCHOOL_DOOR.z) < 2) pr = '<kbd>E</kbd> 학교 안으로 들어가기';
+    else if (q && qStage === 'task' && q.task.type === 'wash' && nearSink()) pr = '<kbd>E</kbd> 손 씻기';
+    else { const who = nearNPC(); if (who) pr = '<kbd>E</kbd> ' + who + '에게 말 걸기'; }
+    setPrompt(dlg ? '' : pr);
+    // pick up items
+    if (q && qStage === 'task' && q.task.type === 'collect') {
+      for (let i = qItems.length - 1; i >= 0; i--) {
+        const it = qItems[i];
+        it.s.position.y = 0.6 + Math.sin(t * 3 + i) * 0.12;
+        if (Math.hypot(it.x - P.x, it.z - P.z) < 0.9) {
+          scene.remove(it.s); qItems.splice(i, 1); qGot++; sfx('coin'); qSave(); questHUD();
+          if (qGot >= q.task.n) { qStage = 'back'; qSave(); setTimeout(questHUD, 600); }
+        }
+      }
+    }
+    // marker over the next person; people turn to Somi when she is close
+    const who = questTargetNPC(), n = who && NPC[who];
+    bang.visible = !!n && !dlg;
+    if (n) bang.position.set(n.m.root.position.x, (n.m.adult ? 3.1 : 2.4) + Math.sin(t * 4) * 0.1, n.m.root.position.z);
+    Object.keys(NPC).forEach(name => {
+      const m = NPC[name].m, r = m.root.position, d = Math.hypot(r.x - P.x, r.z - P.z);
+      if (d < 4) { const a = Math.atan2(P.x - r.x, P.z - r.z); m.root.rotation.y += Math.atan2(Math.sin(a - m.root.rotation.y), Math.cos(a - m.root.rotation.y)) * Math.min(1, dt * 5); }
+      if (m !== haeun) animateKid(m, false, dt, t, false);
+    });
+  }
+
   function pressFloor(n) {
     if (state !== 'inCar') return;
     if (n !== 1) {
@@ -1201,7 +1569,7 @@
     setTimeout(() => { ui.panel.hidden = true; ui.floor.hidden = false; state = 'riding'; rideT = 0; setMission('1층으로 내려가는 중'); }, 1300);
   }
 
-  function jump() { if (grounded && (state === 'toElevator' || state === 'walkToSchool' || state === 'exitLobby' || state === 'boarding')) { vy = 4.2; grounded = false; sfx('jump'); } }
+  function jump() { if (grounded && (state === 'toElevator' || state === 'walkToSchool' || state === 'exitLobby' || state === 'boarding' || state === 'school')) { vy = 4.2; grounded = false; sfx('jump'); } }
 
   // ===================================================================
   // Movement and collision
@@ -1226,6 +1594,7 @@
         if (m === dl) p.x = b.minX - r; else if (m === dr) p.x = b.maxX + r; else if (m === dn) p.z = b.minZ - r; else p.z = b.maxZ + r;
       }
     }
+    if (p.z < -100) return;   // inside the school
     // red light: wait at the curb
     if (!pedGreen && p.z > ROAD_Z0 - 0.5 && p.z < ROAD_Z0 + 0.2 && prevZ <= ROAD_Z0 - 0.5 + 0.01) {
       p.z = ROAD_Z0 - 0.5;
@@ -1245,6 +1614,13 @@
   let camReady = false;
   function inCarNow() { return state === 'inCar' || state === 'closing' || state === 'riding' || state === 'arriving'; }
   function camBlocked(c) {
+    if (c.z < -100) {   // inside the school: keep walls between Somi and the camera out of the way
+      for (let s = 0.1; s <= 1.001; s += 0.05) {
+        const x = P.x + (c.x - P.x) * s, z = P.z + (c.z - P.z) * s;
+        for (const b of obstacles) if (b.wall && x > b.minX - 0.2 && x < b.maxX + 0.2 && z > b.minZ - 0.2 && z < b.maxZ + 0.2) return true;
+      }
+      return false;
+    }
     for (const [x, z, s] of treeSpots) {
       const dx = c.x - x, dz = c.z - z;
       if (dx * dx + dz * dz < 0.5) return true;
@@ -1291,7 +1667,7 @@
     land1.L.position.z = CZ - 0.5 - (atBottom ? d : 0); land1.R.position.z = CZ + 0.5 + (atBottom ? d : 0);
 
     let moving = false;
-    const canWalk = !dlg && (state === 'toElevator' || state === 'boarding' || state === 'exitLobby' || state === 'walkToSchool');
+    const canWalk = !dlg && (state === 'toElevator' || state === 'boarding' || state === 'exitLobby' || state === 'walkToSchool' || state === 'school');
     if (canWalk) {
       if (held.has('ArrowLeft')) yaw += 2.4 * dt;
       if (held.has('ArrowRight')) yaw -= 2.4 * dt;
@@ -1354,8 +1730,8 @@
       if (P.z > ROAD_Z1 + 0.5) coin('c1-09');
       if (P.z > ROAD_Z1 + 0.5 && haeunFollow && warnT <= 0) setMission('잘 건넜어요! 이제 <b>학교 정문</b>으로 가요');
       if (P.z > SCHOOL_GATE_Z + 0.5 && Math.abs(P.x) < 4.5) {
-        state = 'done'; setPrompt(''); setMission('상경초등학교 도착!'); coin('c1-10'); if (window.SomiSave) SomiSave.set(2); setTimeout(() => sfx('win'), 900);
-        ui.done.hidden = false;
+        state = 'arrived'; setPrompt(''); setMission('상경초등학교 도착!'); coin('c1-10'); if (window.SomiSave) SomiSave.set(2); setTimeout(() => sfx('win'), 900);
+        setTimeout(() => talk([{ who: '하은이', text: '학교 도착! 우리 교실은 저 건물 안이야. 현관으로 들어가서 선생님께 가 보자!' }], () => startSchool(false)), 1200);
       }
     }
     if (state === 'arriving' || state === 'exitLobby' || state === 'autoExit') { if (car.position.y > 0) car.position.y = 0; }
@@ -1384,6 +1760,7 @@
       haeun.root.rotation.y = Math.atan2(P.x - haeun.root.position.x, P.z - haeun.root.position.z);
     }
     animateKid(haeun, hMoving, dt, t, false);
+    if (state === 'school') updateSchool(dt, t);
     haeun.arms[1].rotation.z = (!haeunFollow && state === 'walkToSchool' && !haeunMet) ? 2.5 + Math.sin(t * 8) * 0.25 : 0.12;
 
     // companion
@@ -1416,7 +1793,7 @@
 
     // camera: behind Somi, looking where she looks
     fwd.set(Math.sin(yaw), 0, Math.cos(yaw));
-    const onCorridor = (Math.abs(P.y - F15) < 1.5 && state !== 'riding') || (P.y < 1.5 && P.z < 6.7 && P.x > -LEN / 2 && P.x < 25.2);
+    const onCorridor = (Math.abs(P.y - F15) < 1.5 && state !== 'riding') || (P.y < 1.5 && P.z < 6.7 && P.z > -100 && P.x > -LEN / 2 && P.x < 25.2);
     const corY = P.y > 20 ? F15 : 0;
     const inCar = state === 'inCar' || state === 'closing' || state === 'riding' || state === 'arriving' || state === 'autoExit';
     if (inCar) {
@@ -1438,6 +1815,12 @@
       
       camLook.set(P.x + fwd.x * 4, P.y + 0.75, P.z + fwd.z * 4);
     }
+    if (posing) {
+      // face Somi from the front, shifted so the closet panel on the left doesn't cover her
+      const side = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+      camPos.set(P.x + fwd.x * 2.6, P.y + 1.15, P.z + fwd.z * 2.6);
+      camLook.set(P.x - side.x * 0.75, P.y + 0.75, P.z - side.z * 0.75);
+    }
     if (!camReady) { camera.position.copy(camPos); camReady = true; }
     const k = inCar ? 1 : Math.min(1, dt * 5);
     camera.position.lerp(camPos, k);
@@ -1451,12 +1834,12 @@
     requestAnimationFrame(frame);
   }
 
-  window.__somiDebug = { scene: scene, camera: camera, P: P, car: car, haeun: haeun, get state() { return state; }, set state(v) { state = v; }, setYaw(v) { yaw = v; }, open(v) { doorTarget = v; doorsOpen = v; }, closeDlg() { while (dlg) { const st = dlg.steps[dlg.i]; if (st.choices) choose(0); advance(); } } };
+  window.__somiDebug = { nextQuest, get qItems() { return qItems; }, interact: () => interact(), skipDlg() { dlg = null; ui.dialog.hidden = true; document.body.classList.remove('talking'); }, startSchool, get qi() { return qi; }, set qi(v) { qi = v; qStage = 'talk'; placeNPCs(); questHUD(); }, get qStage() { return qStage; }, NPC, scene: scene, camera: camera, P: P, car: car, haeun: haeun, get state() { return state; }, set state(v) { state = v; }, setYaw(v) { yaw = v; }, open(v) { doorTarget = v; doorsOpen = v; }, closeDlg() { while (dlg) { const st = dlg.steps[dlg.i]; if (st.choices) choose(0); advance(); } } };
   $('restart').addEventListener('click', reset);
   if (document.fonts) document.fonts.ready.then(() => {
     signs.forEach(s => { if (s.m.map) s.m.map.dispose(); s.m.map = label.apply(null, s.args); s.m.needsUpdate = true; });
   });
-  if (window.SomiTitle) SomiTitle.onStart(reset); else reset();
+  if (window.SomiTitle) SomiTitle.onStart(mode => mode === 'school' ? startSchool(true) : reset()); else reset();
   window.__somiState = () => state;
   requestAnimationFrame(frame);
 })();

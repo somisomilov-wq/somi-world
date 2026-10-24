@@ -51,12 +51,12 @@ window.SOMI_CHAPTERS = [
   ] },
   { ch: 4, title: '급식과 방과후 활동', place: '급식실, 방과후 교실, 정문', cast: ['선생님', '하은이', '소정이', '안채은', '문소리', '서연이'],
     theme: { bg: '#fff4e6', deco: '🍱🥛👟', drop: '🥄', goal: '🎒', food: '🍙', items: '🍙🍎🥛🍌🥕🍗🍚🥢🍓🧃🍪🥦' }, missions: [
-    ['c4-01', '주먹밥 세기', { game: 'count', rounds: 3, min: 10, max: 22, emoji: '🍙', who: '선생님', say: '주먹밥이 모두 몇 개인지 세어 볼까요?' }],
+    ['c4-01', '주먹밥 세기', { game: 'count', rounds: 3, min: 10, max: 22, emoji: '🍙', who: '영양사 선생님', say: '주먹밥이 모두 몇 개인지 세어 볼까요?' }],
     ['c4-02', '서연이와 식판 틀린 그림 찾기', { game: 'spotdiff', size: 4, diffs: 3, who: '서연이', say: '내 식판이랑 소미 식판, 다른 곳을 찾아봐!' }],
     ['c4-03', '두 자리 뺄셈 퀴즈', { game: 'quiz', kind: 'sub2', n: 5, need: 4, who: '선생님', say: '받아내림 뺄셈! 답을 숫자로 눌러요.' }],
-    ['c4-04', '방과후 주산 교실: 덧셈 짝 맞추기', { game: 'memory', kind: 'add', pairs: 6, who: '선생님', say: '방과후 주산 시간이에요! 머릿속 주판으로 덧셈 카드와 답을 짝지어요.' }],
+    ['c4-04', '방과후 주산 교실: 덧셈 짝 맞추기', { game: 'memory', kind: 'add', pairs: 6, who: '돌봄 선생님', say: '방과후 주산 시간이에요! 머릿속 주판으로 덧셈 카드와 답을 짝지어요.' }],
     ['c4-05', '채은이와 6단 두더지 잡기', { game: 'mole', mode: 'answer', kind: 'gugu', dans: [6], need: 6, who: '안채은', say: '정답이 적힌 두더지만 콩! 틀린 두더지는 참아.' }],
-    ['c4-06', '음식 이름 받침 찾기', { game: 'batchim', n: 5, need: 4, who: '선생님', say: '맛있는 낱말들의 받침을 키보드로 눌러요.' }],
+    ['c4-06', '음식 이름 받침 찾기', { game: 'batchim', n: 5, need: 4, who: '영양사 선생님', say: '맛있는 낱말들의 받침을 키보드로 눌러요.' }],
     ['c4-07', '신발장에서 다른 신발 찾기', { game: 'oddcard', rounds: 3, size: 4, set: 'shoes', who: '하은이', say: '신발장에서 짝이 다른 신발을 찾아줘!' }],
     ['c4-08', '방과후 컴퓨터 교실: 숫자몬 우주선', { game: 'shooter', mode: 'answer', kind: 'gugu', dans: [6], need: 6, who: '문소리', say: '컴퓨터 교실에서 우주선 게임! 6단 정답 숫자몬을 쏘자!' }],
     ['c4-09', '하교 인사 퀴즈', { game: 'quiz', kind: 'situation', who: '선생님', say: '집에 갈 시간이에요!', qs: [

@@ -140,6 +140,7 @@
     if (!NAMES[id] || coins[id]) return false;
     coins[id] = Date.now();
     saveLocal(); render(); toast(NAMES[id]); chime(); pushRemote();
+    window.dispatchEvent(new Event('somi-coin'));
     return true;
   }
 
