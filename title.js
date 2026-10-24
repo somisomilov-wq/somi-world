@@ -26,9 +26,60 @@
   .ttl.go .ttl-press { animation: tblink .12s steps(2) infinite; }
   @keyframes tblink { 50% { opacity: 0; } }
   .ttl-foot { position: absolute; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; text-align: center; font-family: var(--font-body); font-size: 13px; color: #a9a3d9; }
+  .ttl-menu { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
+  .ttl-menu button { font-family: var(--font-display); font-size: clamp(20px, 3vw, 28px); padding: 12px 26px; border-radius: 16px; cursor: pointer;
+    border: 3px solid #c9c3ff; background: rgba(255,255,255,.06); color: #fff; letter-spacing: 1px; }
+  .ttl-menu button small { display: block; font-size: .6em; color: #c9c3ff; letter-spacing: 0; margin-top: 2px; }
+  .ttl-menu button.on { border-color: #ffd23f; background: #ffd23f; color: #2a2160; animation: tbounce 1s ease-in-out infinite; }
+  .ttl-menu button.on small { color: #5a4a9a; }
+  .ttl-hint { font-family: var(--font-body); font-size: 15px; color: #c9c3ff; }
+  .side-btn { position: fixed; z-index: 3; right: max(16px, env(safe-area-inset-right, 0px)); width: 44px; height: 40px; border: 0; border-radius: 14px;
+    background: var(--card, #fff); font-size: 20px; cursor: pointer; box-shadow: 0 3px 0 rgba(36,48,58,.12); }
+  .save-toast { position: fixed; z-index: 40; left: 50%; top: 18%; transform: translateX(-50%); padding: 12px 22px; border-radius: 18px; background: #fffdf8;
+    border: 3px solid #2a2160; font-family: var(--font-display); font-size: 22px; color: #24303a; text-align: center; pointer-events: none; }
+  .save-toast small { display: block; font-family: var(--font-body); font-size: 14px; color: #6b7780; }
   @media (prefers-reduced-motion: reduce) { .ttl-logo span, .ttl canvas, .ttl-stars i { animation: none; } .ttl-press { animation-duration: 2s; } }
   `;
   document.head.appendChild(css);
+
+  // ---------- 저장 ----------
+  // 어디까지 했는지(장 번호)를 이 기기에 저장. 코인은 지갑이 따로 저장함
+  const SAVE_KEY = 'somi-save-v1';
+  const SomiSave = {
+    get() { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; } },
+    set(ch) { try { const cur = SomiSave.get(); localStorage.setItem(SAVE_KEY, JSON.stringify({ ch: Math.max(ch, (cur && cur.ch) || 1), at: Date.now() })); } catch (e) {} },
+    clear() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+  };
+  window.SomiSave = SomiSave;
+  const chTitle = n => { const c = (window.SOMI_CHAPTERS || []).find(x => x.ch === n); return c ? c.title : ''; };
+  function toast(big, small) {
+    const t = document.createElement('div'); t.className = 'save-toast';
+    t.innerHTML = '<span></span><small></small>'; t.firstChild.textContent = big; t.lastChild.textContent = small;
+    document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+  }
+  function saveNow() {
+    const ch = window.SomiGames && SomiGames.active && SomiGames.chapter ? SomiGames.chapter : (window.__somiState && __somiState() === 'done' ? 2 : 1);
+    SomiSave.set(ch);
+    const sv = SomiSave.get();
+    if (window.SomiSound) SomiSound.play('coin');
+    toast('💾 저장했어요!', '다음에 "이어하기"로 ' + sv.ch + '장부터 시작해요');
+  }
+  // 전체 화면 (클로드 화면 안에서는 쓰지 않음)
+  const canFull = window.top === window && !!document.documentElement.requestFullscreen;
+  function goFull() { if (canFull && !document.fullscreenElement) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {}); }
+  function addSideButtons() {
+    const save = document.createElement('button');
+    save.type = 'button'; save.className = 'side-btn'; save.textContent = '💾'; save.title = '저장하기'; save.setAttribute('aria-label', '저장하기');
+    save.style.top = 'calc(112px + env(safe-area-inset-top, 0px))';
+    save.addEventListener('click', saveNow); document.body.appendChild(save);
+    if (canFull) {
+      const fs = document.createElement('button');
+      fs.type = 'button'; fs.className = 'side-btn'; fs.textContent = '⛶'; fs.title = '전체 화면'; fs.setAttribute('aria-label', '전체 화면');
+      fs.style.top = 'calc(160px + env(safe-area-inset-top, 0px))';
+      fs.addEventListener('click', () => document.fullscreenElement ? document.exitFullscreen() : goFull()); document.body.appendChild(fs);
+    }
+  }
+  ['pointerdown', 'keydown'].forEach(t => window.addEventListener(t, () => { if (started) goFull(); }, true));
 
   let coins = 0;
   try { coins = Object.keys(JSON.parse(localStorage.getItem('somi-coins-v1') || '{}')).length; } catch (e) {}
@@ -52,20 +103,41 @@
   draw(SOMI, 10, 14); draw(MON, 28, 19);
 
   let onStart = null, started = false;
+  // 저장이 있으면 "이어하기 / 새로하기" 고르기
+  let save = SomiSave.get(), menu = null, pick = 0;
+  function buildMenu() {
+    save = SomiSave.get();
+    if (!save) return;
+    const press = el.querySelector('.ttl-press');
+    press.outerHTML = '<div class="ttl-menu"><button type="button" data-m="0">▶ 이어하기<small>' + save.ch + '장 · ' + chTitle(save.ch) + '</small></button>' +
+      '<button type="button" data-m="1">★ 새로하기<small>1장부터 (코인은 그대로)</small></button></div><div class="ttl-hint">← → 로 고르고 스페이스!</div>';
+    menu = el.querySelector('.ttl-menu');
+    menu.querySelectorAll('button').forEach(b => b.addEventListener('click', ev => { ev.stopPropagation(); pick = +b.dataset.m; paintMenu(); go(); }));
+    paintMenu();
+  }
+  function paintMenu() { if (menu) menu.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.m === pick)); }
+  document.addEventListener('DOMContentLoaded', () => { buildMenu(); addSideButtons(); });
   function go() {
     if (started) return; started = true;
-    // 클로드 밖(홈 화면 앱, 일반 브라우저)에서는 전체 화면으로
-    try { if (window.top === window && !document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {}); } catch (e) {}
+    goFull();
+    const cont = menu && pick === 0, ch = cont ? save.ch : 1;
+    if (menu && !cont) SomiSave.clear();
     if (window.SomiSound) { SomiSound.unlock(); SomiSound.play('start'); setTimeout(() => SomiSound.say('소미', '소미 월드! 시작!'), 500); }
     el.querySelector('.cr').textContent = '1';
     el.classList.add('go');
-    el.querySelector('.ttl-press').innerHTML = 'GET READY!<small>소미의 하루가 시작돼요</small>';
-    setTimeout(() => { el.classList.add('out'); if (window.SomiSound) SomiSound.music('world'); if (onStart) onStart(); }, 1100);
+    if (menu) { menu.nextSibling.remove(); menu.outerHTML = '<div class="ttl-press">GET READY!<small>' + (cont ? ch + '장부터 이어서 해요' : '소미의 하루가 시작돼요') + '</small></div>'; }
+    else el.querySelector('.ttl-press').innerHTML = 'GET READY!<small>소미의 하루가 시작돼요</small>';
+    setTimeout(() => {
+      el.classList.add('out');
+      if (cont && ch >= 2 && window.SomiGames) { SomiGames.openHub(ch); SomiGames.afterClose = () => { if (onStart) onStart(); }; }
+      else { if (window.SomiSound) SomiSound.music('world'); if (onStart) onStart(); }
+    }, 1100);
     setTimeout(() => el.remove(), 1700);
   }
   window.addEventListener('keydown', ev => {
     if (started || !document.body.contains(el)) return;
     ev.stopImmediatePropagation(); ev.preventDefault();
+    if (menu && /^Arrow/.test(ev.key)) { pick = 1 - pick; paintMenu(); if (window.SomiSound) SomiSound.play('blip'); return; }
     if (ev.key === ' ' || ev.key === 'Enter') go();
   }, true);
   el.addEventListener('click', go);

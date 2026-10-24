@@ -161,7 +161,8 @@
   const hearts = (n, max) => '❤️'.repeat(Math.max(0, n)) + '🤍'.repeat(Math.max(0, max - n));
   function stopGame() { if (game && game.destroy) game.destroy(); game = null; onKeyUp = null; }
   function open() { active = true; root.hidden = false; }
-  function close() { stopGame(); active = false; root.hidden = true; onKey = null; if (window.SomiSound) SomiSound.music('world'); }
+  let afterClose = null;
+  function close() { stopGame(); active = false; root.hidden = true; onKey = null; if (window.SomiSound) SomiSound.music('world'); const f = afterClose; afterClose = null; if (f) f(); }
   root.querySelector('.mg-x').addEventListener('click', () => { if (game) openHub(chapter.ch); else close(); });
   window.addEventListener('keydown', ev => {
     if (!active || ev.ctrlKey || ev.metaKey || ev.altKey) return;
@@ -184,6 +185,7 @@
     const c = CH.find(x => x.ch === no);
     if (!c || !c.theme) return;
     stopGame(); open(); chapter = c;
+    if (window.SomiSave) SomiSave.set(c.ch);
     if (window.SomiSound) SomiSound.music('game');
     root.style.setProperty('--mgbg', c.theme.bg);
     titleEl.textContent = c.ch + '장 · ' + c.title;
@@ -983,5 +985,5 @@
     return { key: ev => { if (ev.key === 'ArrowLeft') step(-1); else if (ev.key === 'ArrowRight') step(1); else if (ev.key === ' ' || ev.key === 'ArrowUp') step(face); }, destroy: stop };
   };
 
-  window.SomiGames = { openHub, close, unlocked, get active() { return active; } };
+  window.SomiGames = { openHub, close, unlocked, get active() { return active; }, get chapter() { return chapter && chapter.ch; }, set afterClose(f) { afterClose = f; } };
 })();

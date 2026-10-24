@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1b1640">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json?v=1792840149">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>소미 월드</title>
@@ -189,12 +189,12 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="config.js"></script>
-<script src="audio.js"></script>
-<script src="title.js"></script>
-<script src="missions.js"></script>
-<script src="wallet.js"></script>
-<script src="minigames.js"></script>
+<script src="config.js?v=1792840149"></script>
+<script src="audio.js?v=1792840149"></script>
+<script src="title.js?v=1792840149"></script>
+<script src="missions.js?v=1792840149"></script>
+<script src="wallet.js?v=1792840149"></script>
+<script src="minigames.js?v=1792840149"></script>
 <script>
 (function () {
   // ===================================================================
@@ -425,7 +425,7 @@
     hinge.position.set(HOME_X - 0.5, F15 + 1.05, 5.06);
     door.position.set(0.5, 0, 0);
     hinge.add(door);
-    hinge.rotation.y = -1.1;
+    hinge.rotation.y = 1.2;   // 집 안쪽으로 열림 (복도 쪽으로 열리면 카메라를 가림)
     scene.add(hinge);
     box(0.08, 0.2, 0.06, M(0xd7c27a), null, 0.85, 0, 0.05).parent = door;
     sign('우리 집', 0.9, 0.28, '#ffffff', '#24303a', home, HOME_X + 1.0, F15 + 1.6, 5.06);
@@ -1354,7 +1354,7 @@
       if (P.z > ROAD_Z1 + 0.5) coin('c1-09');
       if (P.z > ROAD_Z1 + 0.5 && haeunFollow && warnT <= 0) setMission('잘 건넜어요! 이제 <b>학교 정문</b>으로 가요');
       if (P.z > SCHOOL_GATE_Z + 0.5 && Math.abs(P.x) < 4.5) {
-        state = 'done'; setPrompt(''); setMission('상경초등학교 도착!'); coin('c1-10'); setTimeout(() => sfx('win'), 900);
+        state = 'done'; setPrompt(''); setMission('상경초등학교 도착!'); coin('c1-10'); if (window.SomiSave) SomiSave.set(2); setTimeout(() => sfx('win'), 900);
         ui.done.hidden = false;
       }
     }
@@ -1425,7 +1425,7 @@
     } else if (onCorridor) {
       camPos.set(P.x - fwd.x * 3.4, corY + 1.75, P.z - fwd.z * 3.4);
       camPos.x = THREE.MathUtils.clamp(camPos.x, -LEN / 2 + 0.4, CORE_X - 0.15);
-      camPos.z = THREE.MathUtils.clamp(camPos.z + 0.35, 5.3, 6.55);
+      camPos.z = THREE.MathUtils.clamp(camPos.z + 0.35, 5.7, 6.55);
       const squeeze = 1 - Math.min(1, Math.hypot(camPos.x - P.x, camPos.z - P.z) / 3.2);
       camPos.y += squeeze * 0.85;
       camLook.set(P.x + fwd.x * 3, corY + 0.9 - squeeze * 0.6, P.z + fwd.z * 3);
@@ -1451,12 +1451,13 @@
     requestAnimationFrame(frame);
   }
 
-  window.__somiDebug = { P: P, car: car, haeun: haeun, get state() { return state; }, set state(v) { state = v; }, setYaw(v) { yaw = v; }, open(v) { doorTarget = v; doorsOpen = v; }, closeDlg() { while (dlg) { const st = dlg.steps[dlg.i]; if (st.choices) choose(0); advance(); } } };
+  window.__somiDebug = { scene: scene, camera: camera, P: P, car: car, haeun: haeun, get state() { return state; }, set state(v) { state = v; }, setYaw(v) { yaw = v; }, open(v) { doorTarget = v; doorsOpen = v; }, closeDlg() { while (dlg) { const st = dlg.steps[dlg.i]; if (st.choices) choose(0); advance(); } } };
   $('restart').addEventListener('click', reset);
   if (document.fonts) document.fonts.ready.then(() => {
     signs.forEach(s => { if (s.m.map) s.m.map.dispose(); s.m.map = label.apply(null, s.args); s.m.needsUpdate = true; });
   });
   if (window.SomiTitle) SomiTitle.onStart(reset); else reset();
+  window.__somiState = () => state;
   requestAnimationFrame(frame);
 })();
 </script>
