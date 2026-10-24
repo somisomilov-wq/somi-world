@@ -54,6 +54,8 @@
   let onStart = null, started = false;
   function go() {
     if (started) return; started = true;
+    // 클로드 밖(홈 화면 앱, 일반 브라우저)에서는 전체 화면으로
+    try { if (window.top === window && !document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {}); } catch (e) {}
     if (window.SomiSound) { SomiSound.unlock(); SomiSound.play('start'); setTimeout(() => SomiSound.say('소미', '소미 월드! 시작!'), 500); }
     el.querySelector('.cr').textContent = '1';
     el.classList.add('go');
