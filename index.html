@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1b1640">
-<link rel="manifest" href="manifest.json?v=1792846220">
+<link rel="manifest" href="manifest.json?v=1792848344">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>소미 월드</title>
@@ -134,8 +134,9 @@
   .hidden-when-dialog { transition: opacity 0.2s; }
   body.talking .pad, body.talking .side { opacity: 0; pointer-events: none; }
   @media (max-width: 720px) {
-    .title p { display: none; }
-    .mission { max-width: calc(100vw - 150px); font-size: 16px; left: auto; right: max(16px, env(safe-area-inset-right, 0px)); transform: none; }
+    .title { display: none; }
+    .mission { max-width: none; font-size: 15px; left: max(12px, env(safe-area-inset-left, 0px)); right: 124px; transform: none; border-radius: 16px; padding: 8px 12px; }
+    .guide { top: calc(118px + env(safe-area-inset-top, 0px)); font-size: 16px; }
     .pad { grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(2, 46px); }
     .keys button { min-width: 46px; height: 46px; font-size: 17px; }
     .keys button.space { min-width: 90px; }
@@ -189,14 +190,14 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="config.js?v=1792846220"></script>
-<script src="audio.js?v=1792846220"></script>
-<script src="title.js?v=1792846220"></script>
-<script src="missions.js?v=1792846220"></script>
-<script src="quests.js?v=1792846220"></script>
-<script src="wallet.js?v=1792846220"></script>
-<script src="minigames.js?v=1792846220"></script>
-<script src="style.js?v=1792846220"></script>
+<script src="config.js?v=1792848344"></script>
+<script src="audio.js?v=1792848344"></script>
+<script src="title.js?v=1792848344"></script>
+<script src="missions.js?v=1792848344"></script>
+<script src="quests.js?v=1792848344"></script>
+<script src="wallet.js?v=1792848344"></script>
+<script src="minigames.js?v=1792848344"></script>
+<script src="style.js?v=1792848344"></script>
 <script>
 (function () {
   // ===================================================================
@@ -514,8 +515,8 @@
   genericBuilding(-62, 70, 0); genericBuilding(66, 70, 0, 0x5a9a86);
   genericBuilding(112, 10, Math.PI / 2); genericBuilding(-112, 10, Math.PI / 2, 0x5a9a86);
 
-  // far mountains to the north and east
-  [[-120, -200, 70, 0x7e9a86], [-20, -230, 95, 0x8aa592], [90, -210, 75, 0x7b9784], [220, -90, 60, 0x8aa592]].forEach(([x, z, h, c]) => {
+  // far mountains to the north and east (kept clear of the school interior built around z = -200)
+  [[-130, -280, 70, 0x7e9a86], [-20, -360, 95, 0x8aa592], [110, -280, 75, 0x7b9784], [220, -90, 60, 0x8aa592]].forEach(([x, z, h, c]) => {
     const m = add(new THREE.ConeGeometry(h * 1.6, h, 7), std(c, { flatShading: true }), scene, x, h / 2 - 2, z, false);
     m.receiveShadow = false;
   });
@@ -1613,6 +1614,7 @@
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), tmp = new THREE.Vector3(), fwd = new THREE.Vector3();
   let camReady = false;
   function inCarNow() { return state === 'inCar' || state === 'closing' || state === 'riding' || state === 'arriving'; }
+  let camSwing = 0;
   function camBlocked(c) {
     if (c.z < -100) {   // inside the school: keep walls between Somi and the camera out of the way
       for (let s = 0.1; s <= 1.001; s += 0.05) {
@@ -1806,6 +1808,27 @@
       const squeeze = 1 - Math.min(1, Math.hypot(camPos.x - P.x, camPos.z - P.z) / 3.2);
       camPos.y += squeeze * 0.85;
       camLook.set(P.x + fwd.x * 3, corY + 0.9 - squeeze * 0.6, P.z + fwd.z * 3);
+    } else if (P.z < -100) {
+      // inside the school: swing the camera around Somi to the side with the most room (narrow hallway), stopping in front of walls
+      const want = 4.4;
+      const freeAt = (dx, dz) => {
+        for (let d = 0.2; d <= want; d += 0.1) {
+          const x = P.x - dx * d, z = P.z - dz * d;
+          if (obstacles.some(b => b.wall && x > b.minX - 0.25 && x < b.maxX + 0.25 && z > b.minZ - 0.25 && z < b.maxZ + 0.25)) return d - 0.1;
+        }
+        return want;
+      };
+      let best = null;
+      for (const a of [0, 0.45, -0.45, 0.85, -0.85, 1.2, -1.2, 1.5, -1.5]) {
+        const dx = Math.sin(yaw + a), dz = Math.cos(yaw + a), f = freeAt(dx, dz);
+        const score = f - Math.abs(a) * 0.9 + (Math.abs(a - camSwing) < 0.01 ? 0.3 : 0);
+        if (!best || score > best.score) best = { a, dx, dz, f, score };
+      }
+      camSwing = best.a;
+      const dist = Math.max(0.3, best.f), close = 1 - Math.min(1, dist / want);
+      camPos.set(P.x - best.dx * dist, P.y + 2.1 + close * 0.5, P.z - best.dz * dist);
+      const ahead = 3 * (1 - close * 0.7) * (1 - Math.abs(best.a) / 1.5 * 0.85);   // swung to the side → look at Somi herself
+      camLook.set(P.x + fwd.x * ahead, P.y + 0.7, P.z + fwd.z * ahead);
     } else {
       let dist = 5.6;
       for (; dist > 1.4; dist -= 0.4) {
@@ -1822,10 +1845,12 @@
       camLook.set(P.x - side.x * 0.75, P.y + 0.75, P.z - side.z * 0.75);
     }
     if (!camReady) { camera.position.copy(camPos); camReady = true; }
-    const k = inCar ? 1 : Math.min(1, dt * 5);
+    const k = inCar ? 1 : Math.min(1, dt * (P.z < -100 ? 12 : 5));
     camera.position.lerp(camPos, k);
     if (inCar) camera.position.copy(camPos);
     camera.lookAt(camLook);
+    // people standing right in front of the camera would fill the screen, so hide them for a moment
+    if (state === 'school') Object.keys(NPC).forEach(n => { const r = NPC[n].m.root.position; NPC[n].m.root.visible = Math.hypot(r.x - camera.position.x, r.z - camera.position.z) > 1.1; });
 
     sun.position.set(P.x + 25, P.y + 45, P.z + 18);
     sun.target.position.set(P.x, P.y, P.z);
