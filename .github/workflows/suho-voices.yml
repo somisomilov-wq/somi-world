@@ -1,0 +1,29 @@
+# 수호 월드: 대사 목록(suho/voice/lines.json)이 바뀌면 AI 음성 파일을 새로 만들어 저장소에 올림
+name: 수호 월드 음성 만들기
+on:
+  push:
+    branches: [main]
+    paths: ['suho/voice/lines.json', 'suho/tools/make_voices.py']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: suho-voices
+jobs:
+  voices:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -U edge-tts
+      - run: python suho/tools/make_voices.py
+      - name: 음성 파일 올리기
+        run: |
+          git config user.name "suho-voice-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add suho/voice
+          git diff --cached --quiet && exit 0
+          git commit -m "수호 월드 AI 음성 파일 만들기"
+          git pull --rebase origin main
+          git push origin HEAD:main

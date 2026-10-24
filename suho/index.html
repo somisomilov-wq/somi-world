@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1c2c">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>수호 월드</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=swap">
+<style>
+  /* 화면 가운데에 320x180 도트 화면을 꽉 차게 키워서 보여 줌 */
+  html, body { margin: 0; height: 100%; background: #1a1c2c; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+  body { display: grid; place-items: center; }
+  #screen { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  [hidden] { display: none !important; }
+  #pad { position: fixed; inset: auto 0 0 0; height: 0; pointer-events: none; }
+  #pad button { position: fixed; pointer-events: auto; border: 3px solid #1a1c2c; background: rgba(255,255,255,.55); border-radius: 14px; width: 64px; height: 64px; font-size: 26px; color: #1a1c2c; touch-action: none; }
+  #pad button.on { background: #ffd34d; }
+  #pad [data-k=up] { left: 84px; bottom: 156px; } #pad [data-k=down] { left: 84px; bottom: 16px; }
+  #pad [data-k=left] { left: 14px; bottom: 86px; } #pad [data-k=right] { left: 154px; bottom: 86px; }
+  #pad [data-k=a] { right: 24px; bottom: 40px; width: 150px; height: 96px; border-radius: 48px; }
+</style>
+</head>
+<body>
+<canvas id="screen" width="320" height="180"></canvas>
+<div id="pad" hidden>
+  <button type="button" data-k="up" aria-label="위">▲</button>
+  <button type="button" data-k="left" aria-label="왼쪽">◀</button>
+  <button type="button" data-k="right" aria-label="오른쪽">▶</button>
+  <button type="button" data-k="down" aria-label="아래">▼</button>
+  <button type="button" data-k="a" aria-label="스페이스바">●</button>
+</div>
+<script src="config.js"></script>
+<script src="audio.js"></script>
+<script src="gfx.js"></script>
+<script src="data.js"></script>
+<script src="main.js"></script>
+<script src="town.js"></script>
+<script src="games.js"></script>
+</body>
+</html>
