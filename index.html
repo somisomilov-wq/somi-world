@@ -190,6 +190,10 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="lib/GLTFLoader.js?v=1792897734"></script>
+<script src="chars.js?v=1792897734"></script>
+<script src="assets.js?v=1792897734"></script>
+<script src="fx.js?v=1792897734"></script>
 <script src="config.js?v=1792897734"></script>
 <script src="audio.js?v=1792897734"></script>
 <script src="title.js?v=1792897734"></script>
@@ -564,8 +568,12 @@
     box(1.5, 0.12, 0.05, M(0xfff4c8), c, 0, 0.7, 2.16, false);
     c.position.set(x, 0, z); c.rotation.y = ry;
     scene.add(c);
+    // the boxes stay until the KayKit car has loaded
+    SomiAssets.place(c, 'city/' + CAR_MODELS[carN++ % CAR_MODELS.length], { fit: ['z', 4.3] });
     return c;
   }
+  const CAR_MODELS = ['car_sedan', 'car_hatchback', 'car_stationwagon', 'car_sedan', 'car_taxi', 'car_hatchback', 'car_stationwagon'];
+  let carN = 0;
   let ci = 0;
   [-1, 1].forEach(s => {
     for (let i = 0; i < 7; i++) {
@@ -601,6 +609,7 @@
     box(1.8, 0.4, 0.08, M(0xb98256), b, 0, 0.8, -0.22);
     [-0.75, 0.75].forEach(x2 => box(0.08, 0.48, 0.45, M(0x4a5056), b, x2, 0.24, 0));
     b.position.set(x, 0, z); b.rotation.y = ry; scene.add(b);
+    SomiAssets.place(b, 'city/bench', { fit: ['x', 1.8] });
   }
   bench(-4.2, 26, Math.PI / 2); bench(4.2, 11, -Math.PI / 2);
   const lampHead = std(0xffffff, { emissive: 0xfff1c8, emissiveIntensity: 0.5 });
@@ -947,7 +956,9 @@
     for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
       const x = -23.4 + c * 2.9, z = IZ + 4.4 + r * 1.7;
       box(1.1, 0.06, 0.6, deskM, W, x, 0.72, z); box(0.06, 0.7, 0.5, legM, W, x - 0.45, 0.36, z, false); box(0.06, 0.7, 0.5, legM, W, x + 0.45, 0.36, z, false);
-      box(0.5, 0.05, 0.45, chairM, W, x, 0.42, z - 0.55, false); box(0.5, 0.45, 0.05, chairM, W, x, 0.66, z - 0.8, false);
+      const ch = new THREE.Group(); ch.position.set(x, 0, z - 0.65); W.add(ch);
+      box(0.5, 0.05, 0.45, chairM, ch, 0, 0.42, 0.1, false); box(0.5, 0.45, 0.05, chairM, ch, 0, 0.66, -0.15, false);
+      SomiAssets.place(ch, 'furniture/chair_A', { fit: ['y', 0.85] });
       addObstacle(x - 0.55, x + 0.55, z - 0.3, z + 0.3);
     }
     box(0.5, 1.4, 3.6, M(0xd7b98c), W, -25.6, 0.7, IZ + 6.5); addObstacle(-26, -25.3, IZ + 4.7, IZ + 8.3);
@@ -1194,138 +1205,8 @@
   // ===================================================================
   // Characters
   // ===================================================================
-  // Roblox-style blocky avatar built from rounded boxes
-  const rboxCache = {};
-  function rbox(w, h, d, r) {
-    const key = [w, h, d, r].join(',');
-    if (rboxCache[key]) return rboxCache[key];
-    const g = new THREE.BoxGeometry(w, h, d, 5, 5, 5), p = g.attributes.position, v = new THREE.Vector3(), c = new THREE.Vector3();
-    const ix = w / 2 - r, iy = h / 2 - r, iz = d / 2 - r;
-    for (let i = 0; i < p.count; i++) {
-      v.fromBufferAttribute(p, i);
-      c.set(THREE.MathUtils.clamp(v.x, -ix, ix), THREE.MathUtils.clamp(v.y, -iy, iy), THREE.MathUtils.clamp(v.z, -iz, iz));
-      v.sub(c); if (v.lengthSq() > 0) v.setLength(r); v.add(c);
-      p.setXYZ(i, v.x, v.y, v.z);
-    }
-    g.computeVertexNormals();
-    return (rboxCache[key] = g);
-  }
-  function faceTex(skin, o) {
-    return canvasTex(256, 256, (g) => {
-      g.fillStyle = '#' + new THREE.Color(skin).getHexString(); g.fillRect(0, 0, 256, 256);
-      g.fillStyle = 'rgba(255,120,130,.35)'; [[64, 168], [192, 168]].forEach(([x, y]) => { g.beginPath(); g.ellipse(x, y, 26, 15, 0, 0, 7); g.fill(); });
-      [[88, 122], [168, 122]].forEach(([x, y], i) => {
-        g.fillStyle = '#231b18'; g.beginPath(); g.ellipse(x, y, 17, 25, 0, 0, 7); g.fill();
-        g.fillStyle = '#fff'; g.beginPath(); g.arc(x + 6, y - 9, 6.5, 0, 7); g.fill(); g.beginPath(); g.arc(x - 6, y + 9, 3, 0, 7); g.fill();
-        if (o.lashes) { g.strokeStyle = '#231b18'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + (i ? 14 : -14), y - 18); g.lineTo(x + (i ? 24 : -24), y - 26); g.stroke(); }
-        g.strokeStyle = '#3a2f2a'; g.lineWidth = 6; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - 16, y - 40 + (i ? -2 : 2)); g.lineTo(x + 16, y - 40 + (i ? 2 : -2)); g.stroke();
-      });
-      g.strokeStyle = '#7a3b35'; g.lineWidth = 7; g.lineCap = 'round'; g.beginPath(); g.arc(128, 160, 24, 0.2 * Math.PI, 0.8 * Math.PI); g.stroke();
-    });
-  }
-  function shirtTex(top, trim, logo) {
-    return canvasTex(128, 128, (g) => {
-      g.fillStyle = '#' + new THREE.Color(top).getHexString(); g.fillRect(0, 0, 128, 128);
-      g.fillStyle = '#' + new THREE.Color(trim || top).getHexString(); g.fillRect(0, 0, 128, 10); g.fillRect(0, 118, 128, 10);
-      if (logo) { g.font = '54px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(logo, 64, 66); }
-    });
-  }
-  function makeKid(o) {
-    const k = { root: new THREE.Group(), torsoY: 1.18, headY: 2.08 };
-    const body = new THREE.Group();
-    body.scale.setScalar(o.scale);
-    k.root.add(body);
-    const S = (c) => std(c, { roughness: 0.5 });
-    k.legs = [-0.2, 0.2].map(x => {
-      const hip = new THREE.Group(); hip.position.set(x, 0.85, 0); body.add(hip);
-      add(rbox(0.38, 0.72, 0.42, 0.09), S(o.pants), hip, 0, -0.33, 0);
-      add(rbox(0.4, 0.2, 0.5, 0.08), S(o.boots), hip, 0, -0.75, 0.04);
-      return hip;
-    });
-    const skinM = S(o.skin), topM = S(o.top);
-    const front = std(0xffffff, { map: shirtTex(o.top, o.trim, o.logo), roughness: 0.5 });
-    k.torso = add(rbox(0.86, 0.78, 0.46, 0.12), [topM, topM, topM, topM, front, topM], body, 0, 1.18, 0);
-    add(new THREE.CylinderGeometry(0.16, 0.16, 0.2, 12), skinM, body, 0, 1.62, 0);
-    if (o.belt) { add(rbox(0.9, 0.13, 0.5, 0.04), S(o.belt), k.torso, 0, -0.32, 0, false); box(0.12, 0.3, 0.06, S(o.belt), k.torso, 0.18, -0.46, 0.25, false); }
-    if (o.bag) {
-      add(rbox(0.62, 0.66, 0.26, 0.1), S(o.bag), body, 0, 1.2, -0.38);
-      [-0.2, 0.2].forEach(x => box(0.07, 0.72, 0.05, S(o.bag), body, x, 1.24, 0.25));
-    }
-    if (o.coat) {
-      // open jacket: a slightly bigger shell with the shirt showing down the middle
-      const coatM = S(o.coat);
-      const cf = canvasTex(128, 128, (g) => {
-        g.fillStyle = '#' + new THREE.Color(o.coat).getHexString(); g.fillRect(0, 0, 128, 128);
-        g.fillStyle = '#' + new THREE.Color(o.top).getHexString(); g.fillRect(44, 0, 40, 128);
-        g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(40, 0, 4, 128); g.fillRect(84, 0, 4, 128);
-        g.fillStyle = 'rgba(255,255,255,.8)'; [30, 64, 98].forEach(y => { g.beginPath(); g.arc(34, y, 5, 0, 7); g.fill(); });
-      });
-      const coatF = std(0xffffff, { map: cf, roughness: 0.6 });
-      add(rbox(0.96, 0.9, 0.56, 0.13), [coatM, coatM, coatM, coatM, coatF, coatM], k.torso, 0, -0.04, 0);
-    }
-    const sleeveM = o.coat ? S(o.coat) : topM;
-    k.arms = [-1, 1].map(side => {
-      const sh = new THREE.Group(); sh.position.set(side * 0.6, 1.5, 0); body.add(sh);
-      add(rbox(o.coat ? 0.36 : 0.32, o.coat ? 0.6 : 0.5, o.coat ? 0.42 : 0.38, 0.1), sleeveM, sh, 0, o.coat ? -0.22 : -0.18, 0);
-      add(rbox(0.3, 0.36, 0.34, 0.1), skinM, sh, 0, -0.58, 0);
-      sh.rotation.z = side * 0.06;
-      return sh;
-    });
-    const head = new THREE.Group(); head.position.set(0, 2.08, 0); body.add(head); k.head = head;
-    const faceM = std(0xffffff, { map: faceTex(o.skin, o), roughness: 0.55 });
-    add(rbox(0.84, 0.8, 0.78, 0.24), [skinM, skinM, skinM, skinM, faceM, skinM], head, 0, 0, 0);
-    const hairM = std(o.hair, { roughness: 0.45 });
-    add(rbox(0.94, 0.34, 0.88, 0.16), hairM, head, 0, 0.3, -0.02);
-    add(rbox(0.9, 0.17, 0.14, 0.06), hairM, head, 0, 0.25, 0.37);
-    if (o.style === 'short') {
-      add(rbox(0.94, 0.42, 0.26, 0.12), hairM, head, 0, 0.14, -0.33);
-      [-1, 1].forEach(side => add(rbox(0.12, 0.3, 0.5, 0.05), hairM, head, side * 0.45, 0.16, -0.1));
-    } else {
-      add(rbox(0.94, o.style === 'bob' ? 0.62 : 0.86, 0.26, 0.12), hairM, head, 0, o.style === 'bob' ? 0.02 : -0.08, -0.33);
-      [-1, 1].forEach(side => add(rbox(0.14, o.style === 'bob' ? 0.52 : 0.66, 0.56, 0.06), hairM, head, side * 0.45, o.style === 'bob' ? 0.02 : -0.06, -0.08));
-    }
-    if (o.style === 'pony') {
-      k.tail = add(rbox(0.28, 0.7, 0.28, 0.13), hairM, head, 0, -0.2, -0.55); k.tail.rotation.x = 0.25;
-      box(0.3, 0.08, 0.3, S(o.tie || 0xff7a9a), head, 0, 0.16, -0.5, false);
-    }
-    if (o.style === 'long') {
-      add(rbox(0.96, 1.25, 0.24, 0.12), hairM, head, 0, -0.32, -0.36);
-      [-1, 1].forEach(side => add(rbox(0.16, 1.05, 0.5, 0.07), hairM, head, side * 0.46, -0.3, -0.1));
-    }
-    if (o.style === 'bun') {
-      add(new THREE.SphereGeometry(0.24, 16, 12), hairM, head, 0, 0.58, -0.12);
-      box(0.36, 0.07, 0.36, S(o.tie || 0xff7a9a), head, 0, 0.42, -0.12, false);
-    }
-    if (o.style === 'pigtails') {
-      [-1, 1].forEach(side => {
-        const p = add(rbox(0.26, 0.56, 0.26, 0.12), hairM, head, side * 0.56, -0.18, -0.16); p.rotation.z = side * 0.2;
-        box(0.28, 0.08, 0.28, S(o.tie || 0xff7a9a), head, side * 0.53, 0.08, -0.16, false);
-      });
-    }
-    k.phase = 0;
-    return k;
-  }
-  function animateKid(k, moving, dt, t, airborne) {
-    if (moving) k.phase += dt * 11; else k.phase *= 0.85;
-    const sw = moving ? Math.sin(k.phase) * 0.7 : 0;
-    k.legs[0].rotation.x = airborne ? -0.5 : sw;
-    k.legs[1].rotation.x = airborne ? 0.4 : -sw;
-    k.arms[0].rotation.x = -sw * 0.9;
-    if (!k.waving) k.arms[1].rotation.x = sw * 0.9;
-    const bob = moving ? Math.abs(Math.sin(k.phase)) * 0.06 : Math.sin(t * 2) * 0.015;
-    k.torso.position.y = k.torsoY + bob;
-    k.head.position.y = k.headY + bob;
-    if (k.tail) k.tail.rotation.x = 0.25 + Math.sin(k.phase * 0.5) * 0.18;
-  }
-  function makeAdult(o) {
-    const a = makeKid(Object.assign({ scale: 0.56, style: 'bob' }, o));
-    a.torso.scale.set(1, 1.35, 1);
-    a.legs.forEach(l => { l.scale.y = 1.35; l.position.y = 0.85 * 1.35; });
-    a.torsoY = 1.18 + 0.4; a.headY = 2.5;
-    a.torso.position.y = a.torsoY; a.head.position.y = a.headY; a.arms.forEach(s => s.position.y = 1.9);
-    a.adult = true;
-    return a;
-  }
+  // chibi anime kids with toon shading live in chars.js
+  const { makeKid, makeAdult, animateKid } = SomiChars;
 
   const SOMI_BASE = {
     scale: 0.42, skin: 0xf7dcc6, hair: 0x1c1a1d, top: 0xbcc2b6, trim: 0xaeb4a8, pants: 0xb3b8ad,
@@ -1390,7 +1271,7 @@
     '엄마': { m: mom, home: '우리 집 15층' }
   });
   // white cook's hat for the dietitian
-  add(new THREE.CylinderGeometry(0.42, 0.38, 0.5, 16), M(0xffffff), NPC['영양사 선생님'].m.head, 0, 0.62, 0);
+  add(new THREE.CylinderGeometry(0.5, 0.46, 0.5, 16), SomiChars.toon(0xffffff), NPC['영양사 선생님'].m.head, 0, 0.82, -0.02);
   Object.values(NPC).forEach(n => { if (n.m !== haeun && n.m !== mom) scene.add(n.m.root); if (n.homes) { n.shown = false; n.m.root.visible = false; n.m.root.position.set(0, -60, 0); } });
   // floating marker over the person to talk to next
   const bang = new THREE.Sprite(new THREE.SpriteMaterial({ map: label('!', 128, 128, 'rgba(0,0,0,0)', '#ffb300', 120), depthTest: false }));
@@ -1633,7 +1514,8 @@
   // ===================================================================
   let state = 'intro';
   const P = new THREE.Vector3();
-  let yaw = Math.PI / 2, vy = 0, grounded = true, floorY = F15;
+  let yaw = Math.PI / 2, vy = 0, grounded = true, floorY = F15, fxStep = 0;
+  SomiFX.init(scene);
   let doorsOpen = 0, doorTarget = 0, rideT = 0, haeunFollow = false, haeunMet = false, warnT = 0;
   let mtime = 0;
 
@@ -2111,7 +1993,7 @@
         const it = qItems[i];
         it.s.position.y = it.y + 0.6 + Math.sin(t * 3 + i) * 0.12;
         if (Math.hypot(it.x - P.x, it.z - P.z) < 0.9 && Math.abs(it.y - P.y) < 1) {
-          scene.remove(it.s); qItems.splice(i, 1); qGot++; sfx('coin'); qSave(); questHUD();
+          SomiFX.sparkle(it.s.position.x, it.s.position.y, it.s.position.z); scene.remove(it.s); qItems.splice(i, 1); qGot++; sfx('coin'); qSave(); questHUD();
           if (qGot >= q.task.n) setTimeout(() => taskDone(q), 500);
         }
       }
@@ -2326,10 +2208,14 @@
     if (state === 'riding' || state === 'closing' || state === 'inCar' || state === 'arriving' || (state === 'rideUp' && rideIn)) floorY = car.position.y;
     else if (inSangga(P)) floorY = sangGround(P.x, P.z, P.y);
     else floorY = P.y > 20 ? F15 : 0;
+    const wasGrounded = grounded;
     vy -= 12 * dt;
     P.y += vy * dt;
     if (P.y <= floorY || (grounded && vy <= 0 && P.y - floorY < 0.35)) { P.y = floorY; vy = 0; grounded = true; }
     else if (P.y > floorY + 0.35) grounded = false;
+    // dust: a burst on landing, little puffs from the feet while running
+    if (grounded && !wasGrounded) SomiFX.puff(P.x, P.y, P.z, 8);
+    if (grounded && moving && !inCarNow()) { fxStep -= dt; if (fxStep < 0) { fxStep = 0.24; SomiFX.puff(P.x, P.y, P.z, 1); } }
     if (state === 'rideUp') updateRideUp(dt);
 
     // state transitions
@@ -2496,6 +2382,7 @@
     nightSky.position.set(P.x, 0, P.z);
     sun.target.position.set(P.x, P.y, P.z);
 
+    SomiFX.update(dt);
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
