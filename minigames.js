@@ -166,6 +166,12 @@
   .mg-ghost { position: fixed; z-index: 20; pointer-events: none; transform: translate(-50%, -50%) scale(1.15); }
   .mg-info { margin-top: 8px; background: #fff; border-radius: 12px; padding: 6px 14px; font-size: 16px; min-height: 22px; text-align: center; }
   .mg-info b { color: var(--accent); }
+  .mg-ask { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(20,24,40,.55); font-family: var(--font-body); color: var(--ink); }
+  .mg-ask > div { background: #fff; border: 3px solid var(--ink); border-radius: 22px; padding: 22px 26px 18px; text-align: center; width: min(420px, calc(100% - 32px)); box-shadow: 0 6px 0 var(--ink); }
+  .mg-ask h3 { margin: 0 0 4px; font-family: var(--font-display); font-weight: 400; font-size: 28px; }
+  .mg-ask p { margin: 0; color: var(--soft); font-size: 16px; }
+  .mg-ask .mg-row { margin-top: 16px; }
+  .mg-ask .mg-btn.on { outline: 4px solid var(--accent); outline-offset: 2px; }
   .mg-result h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 44px; }
   .mg-result p { font-size: 19px; margin: 8px 0 0; }
   .mg-result .coin { font-size: 64px; margin: 8px auto; }
@@ -187,17 +193,48 @@
   const kindOf = s => s.game === 'quiz' ? QKIND[s.kind] : KIND[s.game];
 
   let active = false, onKey = null, onKeyUp = null, game = null, chapter = null;
+  // Esc를 누르면 바로 끄지 않고 한 번 물어봐요. 물어보는 동안 게임은 멈춰요. 기본 선택은 「계속하기」
+  let asking = null;
+  function ask(title, sub, yesLabel, onYes) {
+    if (asking) return;
+    const box = document.createElement('div');
+    box.className = 'mg-ask'; box.setAttribute('role', 'dialog');
+    box.innerHTML = '<div><h3></h3><p></p><div class="mg-row"><button type="button" class="mg-btn main" data-a="no">계속하기</button><button type="button" class="mg-btn" data-a="yes"></button></div><p style="margin-top:12px">←→로 고르고 <kbd>스페이스</kbd></p></div>';
+    box.querySelector('h3').textContent = title; box.querySelector('p').textContent = sub || ''; box.querySelector('[data-a="yes"]').textContent = yesLabel;
+    document.body.appendChild(box);
+    let sel = 0;
+    const btns = Array.from(box.querySelectorAll('button')), paint = () => btns.forEach((b, i) => b.classList.toggle('on', i === sel));
+    const end = yes => { box.remove(); asking = null; if (yes) onYes(); };
+    btns.forEach((b, i) => b.addEventListener('click', () => end(i === 1)));
+    asking = { key: ev => {
+      if (ev.key === 'Escape') end(false);
+      else if (/^Arrow(Left|Right|Up|Down)$/.test(ev.key)) { sel = 1 - sel; paint(); sfx.tap(); }
+      else if (isGo(ev.key)) end(sel === 1);
+    } };
+    paint(); sfx.tap();
+  }
+  window.addEventListener('keydown', ev => {
+    if (!asking || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    ev.stopImmediatePropagation(); ev.preventDefault();
+    asking.key(ev);
+  }, true);
+  window.addEventListener('keyup', ev => { if (asking) ev.stopImmediatePropagation(); }, true);
+  function askLeave() {
+    if (questCb) ask('미션을 그만할까요?', '나중에 다시 할 수 있어요.', '그만하기', () => questEnd(false));
+    else if (game) ask('미션을 그만할까요?', '미션 목록으로 돌아가요.', '그만하기', () => openHub(chapter.ch));
+    else close();
+  }
   function setStatus(html) { statusEl.innerHTML = html || ''; }
   const hearts = (n, max) => '❤️'.repeat(Math.max(0, n)) + '🤍'.repeat(Math.max(0, max - n));
   function stopGame() { if (game && game.destroy) game.destroy(); game = null; onKeyUp = null; }
   function open() { active = true; root.hidden = false; }
   let afterClose = null;
   function close() { stopGame(); active = false; root.hidden = true; onKey = null; if (window.SomiSound) SomiSound.music('world'); const f = afterClose; afterClose = null; if (f) f(); }
-  root.querySelector('.mg-x').addEventListener('click', () => { if (questCb) questEnd(false); else if (game) openHub(chapter.ch); else close(); });
+  root.querySelector('.mg-x').addEventListener('click', askLeave);
   window.addEventListener('keydown', ev => {
     if (!active || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     ev.stopImmediatePropagation(); ev.preventDefault();
-    if (ev.key === 'Escape') { if (questCb) questEnd(false); else if (game) openHub(chapter.ch); else close(); return; }
+    if (ev.key === 'Escape') { askLeave(); return; }
     if (onKey) onKey(ev);
   }, true);
   window.addEventListener('keyup', ev => { if (!active) return; ev.stopImmediatePropagation(); if (onKeyUp) onKeyUp(ev); }, true);
@@ -617,7 +654,7 @@
   }
   function loop(step) {
     let raf = 0, last = performance.now(), dead = false;
-    const f = now => { if (dead) return; const dt = Math.min(0.05, (now - last) / 1000); last = now; step(dt); raf = requestAnimationFrame(f); };
+    const f = now => { if (dead) return; const dt = Math.min(0.05, (now - last) / 1000); last = now; if (!asking) step(dt); raf = requestAnimationFrame(f); };
     raf = requestAnimationFrame(f);
     return () => { dead = true; cancelAnimationFrame(raf); };
   }
@@ -1124,8 +1161,8 @@
       render();
     }
     const timer = setInterval(() => {
-      if (over) return;
       const now = performance.now(), dt = (now - last) / 1000; last = now;
+      if (over || asking) return;
       if (!answer) { time -= dt; if (time <= 0) { over = true; render(); done(false); return; } }
       up.forEach((m, i) => { if (m && now > m.until) up[i] = null; });
       nextPop -= dt;
@@ -1192,5 +1229,5 @@
     return { key: ev => { if (ev.key === 'ArrowLeft') step(-1); else if (ev.key === 'ArrowRight') step(1); else if (ev.key === ' ' || ev.key === 'ArrowUp') step(face); }, destroy: stop };
   };
 
-  window.SomiGames = { openHub, close, unlocked, play, get active() { return active; }, get chapter() { return chapter && chapter.ch; }, set afterClose(f) { afterClose = f; } };
+  window.SomiGames = { openHub, close, unlocked, play, ask, get asking() { return !!asking; }, get active() { return active; }, get chapter() { return chapter && chapter.ch; }, set afterClose(f) { afterClose = f; } };
 })();

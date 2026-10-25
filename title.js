@@ -66,7 +66,23 @@
   }
   // 전체 화면 (클로드 화면 안에서는 쓰지 않음)
   const canFull = window.top === window && !!document.documentElement.requestFullscreen;
-  function goFull() { if (canFull && !document.fullscreenElement) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {}); }
+  // 전체 화면에서는 Esc를 잡아 둬서(크롬) 바로 꺼지지 않고 아래에서 한 번 물어봐요. Esc를 길게 누르면 전체 화면이 풀려요
+  function goFull() {
+    if (canFull && !document.fullscreenElement) document.documentElement.requestFullscreen({ navigationUI: 'hide' })
+      .then(() => { if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock(['Escape']).catch(() => {}); }).catch(() => {});
+  }
+  // 걸어 다니는 중에 Esc: 저장하고 처음 화면으로 갈지 물어봐요
+  window.addEventListener('keydown', ev => {
+    if (ev.key !== 'Escape' || !started || ev.repeat || !window.SomiGames || SomiGames.active || SomiGames.asking || document.querySelector('.closet')) return;
+    ev.stopImmediatePropagation(); ev.preventDefault();
+    SomiGames.ask('게임을 끝낼까요?', '지금까지 한 것은 저장돼요. 다음에 「이어하기」로 계속해요.', '끝내기', () => {
+      const ch = window.__somiState && __somiState() === 'done' ? 2 : 1;
+      if (window.SomiSave) SomiSave.set(ch);
+      if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
+      const reload = () => location.reload();
+      if (document.fullscreenElement) document.exitFullscreen().then(reload, reload); else reload();
+    });
+  }, true);
   function addSideButtons() {
     const save = document.createElement('button');
     save.type = 'button'; save.className = 'side-btn'; save.textContent = '💾'; save.title = '저장하기'; save.setAttribute('aria-label', '저장하기');
