@@ -2,8 +2,9 @@
 // 소미 월드 미션 목록: 10장 × 10개 = 소미 코인 100개
 // [id, 이름, 설정]. 1장은 3D 월드(index.html)에서 coin('c1-..')으로 지급. 2~10장은 minigames.js가 설정대로 미니게임을 실행.
 // 문제(키보드로 직접 입력): quiz(kind gugu/add2/sub2 숫자 입력, situation 번호 입력), count 개수 세기(숫자), batchim 받침(자음 입력)
-// 게임(방향키 + 스페이스만): shooter 총쏘기(mode answer/meteor), snake 뱀(mode eat/order/answer/word), runner 달리기 점프, maze 미로,
-//   mole 두더지(mode plain/answer), ladder 사다리, catch 정답 공 받기, oddcard 다른 카드, spotdiff 틀린 그림, memory 짝 맞추기, order 순서대로
+// 게임(방향키 + 스페이스만): shooter 총쏘기(mode answer/meteor), runner 달리기 점프, maze 미로(mode stars/order/word),
+//   mole 두더지(mode plain/answer), ladder 사다리, catch 정답 공 받기, oddcard 다른 카드, spotdiff 틀린 그림, memory 짝 맞추기, order 순서대로,
+//   merge 합성 놀이(set lunch/snack/belt/sand: 같은 것 두 개를 합쳐 손님 주문 채우기)
 // 이미 받은 코인의 id는 바꾸지 마세요.
 window.SOMI_CHAPTERS = [
   { ch: 1, title: '학교 가는 길', place: '상계주공 16단지 → 상경초등학교', cast: ['엄마', '하은이'], missions: [
@@ -23,12 +24,12 @@ window.SOMI_CHAPTERS = [
     ['c2-01', '선생님의 받아쓰기: 받침 찾기', { game: 'batchim', n: 5, need: 4, who: '선생님', say: '20번 소미! 받아쓰기 시간이에요. 빈칸에 들어갈 받침을 키보드로 눌러요.' }],
     ['c2-02', '소정이와 다른 카드 찾기', { game: 'oddcard', rounds: 3, size: 4, who: '소정이', say: '소미야, 카드 중에 하나만 달라! 방향키로 골라서 스페이스!' }],
     ['c2-03', '7단 퀴즈', { game: 'quiz', kind: 'gugu', dans: [7], n: 5, need: 4, who: '선생님', say: '오늘은 7단이에요. 답을 숫자로 눌러요!' }],
-    ['c2-04', '하은이와 뱀 놀이: 숫자 순서대로', { game: 'snake', mode: 'order', n: 8, speed: 4, who: '하은이', say: '뱀이 1부터 8까지 순서대로 먹어야 해! 방향키로 움직여.' }],
+    ['c2-04', '하은이와 숫자 미로', { game: 'maze', mode: 'order', n: 5, cols: 7, rows: 5, who: '하은이', say: '미로 속 숫자를 1부터 5까지 순서대로 밟고 문으로 나가자! 방향키로 움직여.' }],
     ['c2-05', '채은이와 교실 틀린 그림 찾기', { game: 'spotdiff', size: 4, diffs: 3, who: '안채은', say: '두 교실 그림에서 다른 곳 세 군데를 찾아봐!' }],
     ['c2-06', '숫자몬 우주선: 덧셈 정답 쏘기', { game: 'shooter', mode: 'answer', kind: 'add2', need: 5, who: '소정이', say: '정답이 적힌 숫자몬만 쏴! 스페이스가 발사야.' }],
     ['c2-07', '소리의 연필 세기', { game: 'count', rounds: 3, min: 8, max: 18, emoji: '✏️', who: '문소리', say: '소미야, 우리 모둠 연필이 몇 자루인지 세어 줄래?' }],
     ['c2-08', '책장 사다리 올라 동화책 꺼내기', { game: 'ladder', height: 14, speed: 1, who: '선생님', say: '맨 위 칸 동화책을 꺼내 줄래요? ↑로 오르고 ←→로 피해요!' }],
-    ['c2-09', '낱말 뱀: 곰 만들기', { game: 'snake', mode: 'word', need: 3, speed: 3.5, who: '하은이', say: 'ㄱ, ㅗ, ㅁ을 순서대로 먹으면 곰이 돼! 낱말 세 개 만들기!' }],
+    ['c2-09', '낱말 미로: 곰 만들기', { game: 'maze', mode: 'word', first: '곰', need: 3, cols: 7, rows: 5, who: '하은이', say: 'ㄱ, ㅗ, ㅁ을 순서대로 주우면 곰이 돼! 미로에서 낱말 세 개 만들기!' }],
     ['c2-10', '수학 시간: 덧셈 정답 공 받기', { game: 'catch', kind: 'add2', need: 5, who: '선생님', say: '수업 잘 듣는 우리 3반! 정답이 적힌 공만 바구니로 받아요.' }]
   ] },
   { ch: 3, title: '쉬는 시간과 체육 시간', place: '1학년 3반 교실과 운동장', cast: ['하은이', '소정이', '태린이', '서연이', '선생님'],
@@ -46,13 +47,13 @@ window.SOMI_CHAPTERS = [
       ['화장실에 다녀온 다음엔?', ['손을 깨끗이 씻어요', '그냥 나와요', '옷에 닦아요']],
       ['선생님이 "20번 소미!" 하고 부르시면?', ['네! 하고 대답해요', '못 들은 척해요', '책상 밑에 숨어요']]
     ] }],
-    ['c3-09', '쿠키 먹는 뱀', { game: 'snake', mode: 'eat', need: 10, speed: 4.5, who: '하은이', say: '뱀이 쿠키를 열 개 먹으면 성공! 꼬리에 부딪히면 안 돼.' }],
+    ['c3-09', '쿠키 미로', { game: 'maze', cols: 8, rows: 6, stars: 5, item: '🍪', goal: '🧺', who: '하은이', say: '미로에 쿠키 다섯 개가 숨어 있어! 다 모아서 바구니로 가자.' }],
     ['c3-10', '체육 시간: 정글짐 오르기', { game: 'ladder', height: 16, speed: 1.2, drop: '⚽', who: '태린이', say: '체육 시간 마지막은 정글짐! 누가 먼저 꼭대기에 가나 해 보자!' }]
   ] },
   { ch: 4, title: '급식과 오후 수업', place: '급식실, 교실, 운동장', cast: ['선생님', '하은이', '소정이', '안채은', '문소리', '서연이'],
     theme: { bg: '#fff4e6', deco: '🍱🥛👟', drop: '🥄', goal: '🎒', food: '🍙', items: '🍙🍎🥛🍌🥕🍗🍚🥢🍓🧃🍪🥦' }, missions: [
     ['c4-01', '주먹밥 세기', { game: 'count', rounds: 3, min: 10, max: 22, emoji: '🍙', who: '영양사 선생님', say: '주먹밥이 모두 몇 개인지 세어 볼까요?' }],
-    ['c4-02', '서연이와 식판 틀린 그림 찾기', { game: 'spotdiff', size: 4, diffs: 3, who: '서연이', say: '내 식판이랑 소미 식판, 다른 곳을 찾아봐!' }],
+    ['c4-02', '급식 배식 합성 놀이', { game: 'merge', set: 'lunch', need: 5, who: '서연이', say: '친구들 식판을 채워 주자! 같은 음식 두 개를 합치면 더 큰 음식이 돼.' }],
     ['c4-03', '두 자리 뺄셈 퀴즈', { game: 'quiz', kind: 'sub2', n: 5, need: 4, who: '선생님', say: '받아내림 뺄셈! 답을 숫자로 눌러요.' }],
     ['c4-04', '6교시 색종이 덧셈 짝 맞추기', { game: 'memory', kind: 'add', pairs: 6, who: '선생님', say: '6교시는 색종이 수학! 덧셈 카드와 답 카드를 짝지어요.' }],
     ['c4-05', '채은이와 6단 두더지 잡기', { game: 'mole', mode: 'answer', kind: 'gugu', dans: [6], need: 6, who: '안채은', say: '정답이 적힌 두더지만 콩! 틀린 두더지는 참아.' }],
@@ -80,7 +81,7 @@ window.SOMI_CHAPTERS = [
     ['c5-06', '컴퓨터 자판 받침 찾기', { game: 'batchim', n: 5, need: 4, who: '컴퓨터 선생님', say: '컴퓨터 자판에서 받침 자음을 찾아 눌러 봐요!' }],
     ['c5-07', '코딩 로봇 미로', { game: 'maze', cols: 9, rows: 7, stars: 3, goal: '🤖', who: '컴퓨터 선생님', say: '숫자몬 로봇을 방향키로 움직여서 별을 모으고 탈출!' }],
     ['c5-08', '문소리와 숫자몬 우주선', { game: 'shooter', mode: 'answer', kind: 'gugu', dans: [7], need: 6, who: '문소리', say: '컴퓨터 교실 우주선 게임! 7단 정답 숫자몬을 쏘자!' }],
-    ['c5-09', '돌봄교실 쿠키 뱀', { game: 'snake', mode: 'eat', need: 12, speed: 4.5, who: '돌봄 선생님', say: '간식 시간! 쿠키 열두 개를 먹어 볼까? 꼬리 조심!' }],
+    ['c5-09', '돌봄교실 간식 만들기', { game: 'merge', set: 'snack', need: 6, who: '돌봄 선생님', say: '간식 시간! 같은 재료 두 개를 합쳐서 친구들이 원하는 간식을 만들어 줄래?' }],
     ['c5-10', '하교 길 안전 퀴즈', { game: 'quiz', kind: 'situation', who: '선율이', say: '소미야! 같이 태권도 가자!', qs: [
       ['친구를 만나면 뭐라고 할까?', ['안녕! 반가워!', '저리 가!', '아무 말 안 해요']],
       ['신호등이 빨간불이면?', ['멈춰서 기다려요', '뛰어서 건너요', '눈을 감고 건너요']],
@@ -114,7 +115,7 @@ window.SOMI_CHAPTERS = [
     ['c7-02', '발차기 횟수 세기', { game: 'count', rounds: 3, min: 12, max: 25, emoji: '🦶', who: '관장님', say: '발차기를 몇 번 했는지 세어 보세요!' }],
     ['c7-03', '격파 판자 곱셈', { game: 'quiz', kind: 'gugu', dans: [6, 7, 8, 9], n: 6, need: 5, who: '관장님', say: '판자 묶음을 곱셈으로! 여섯 문제, 숫자로 대답!' }],
     ['c7-04', '양훈 오빠와 송판 격파', { game: 'mole', mode: 'plain', need: 15, time: 40, speed: 1.2, mole: '🪵', who: '양훈 오빠', say: '오빠가 송판을 들어 줄게! 나오는 송판을 스페이스로 격파! 기합!' }],
-    ['c7-05', '띠 색깔 다른 카드 찾기', { game: 'oddcard', rounds: 3, size: 5, set: 'belt', who: '선율이', say: '띠 중에 색이 다른 걸 찾아봐!' }],
+    ['c7-05', '띠 합성 승급 놀이', { game: 'merge', set: 'belt', need: 6, who: '선율이', say: '흰 띠 두 개를 합치면 노란 띠! 띠를 합쳐서 친구들 승급을 도와주자!' }],
     ['c7-06', '구구단 숫자몬 우주선', { game: 'shooter', mode: 'answer', kind: 'gugu', dans: [6, 7, 8, 9], need: 6, who: '소율이', say: '6단부터 9단까지 섞었어. 정답을 쏴!' }],
     ['c7-07', '도장 틀린 그림 찾기', { game: 'spotdiff', size: 5, diffs: 4, who: '소율이', say: '도장 그림이 더 커졌어. 다른 곳 네 군데!' }],
     ['c7-08', '양훈 오빠와 클라이밍 벽 오르기', { game: 'ladder', height: 20, speed: 1.5, who: '양훈 오빠', say: '체력 훈련이야! 오빠보다 먼저 꼭대기 메달까지 가 봐!' }],
@@ -137,7 +138,7 @@ window.SOMI_CHAPTERS = [
       ['그네 앞을 지나갈 때는?', ['멀리 돌아서 가요', '그네 바로 앞으로 뛰어가요', '그네를 밀어요']],
       ['시소에서 내릴 때는?', ['친구에게 내린다고 말해요', '갑자기 뛰어내려요', '친구를 놀래켜요']]
     ] }],
-    ['c8-07', '수호와 뱀 놀이: 숫자 순서대로', { game: 'snake', mode: 'order', n: 12, speed: 4, who: '수호', say: '누나, 뱀이 1부터 12까지 먹게 해 줘!' }],
+    ['c8-07', '수호와 숫자 미로', { game: 'maze', mode: 'order', n: 8, cols: 8, rows: 6, goal: '🛝', who: '수호', say: '누나, 미로 속 숫자를 1부터 8까지 순서대로 밟아 줘!' }],
     ['c8-08', '비눗방울 쏘기', { game: 'shooter', mode: 'meteor', need: 15, target: '🫧', who: '아빠', say: '비눗방울이 바닥에 닿기 전에 쏴서 터뜨려!' }],
     ['c8-09', '술래잡기 달리기', { game: 'runner', need: 12, speed: 1.1, obstacle: '🪣', who: '선율이', say: '모래 양동이를 점프로 넘으면서 술래를 피해!' }],
     ['c8-10', '놀이터 성 무한 계단', { game: 'stairs', need: 30, goal: '🏰', who: '선율이', say: '놀이터 성 꼭대기까지 흔들다리 계단 경주!' }]
@@ -147,7 +148,7 @@ window.SOMI_CHAPTERS = [
     ['c9-01', '숨바꼭질 틀린 그림', { game: 'spotdiff', size: 5, diffs: 4, who: '소율이', say: '이번엔 그림 속에 숨은 다른 곳을 찾아봐!' }],
     ['c9-02', '나비 잡았다 놓아 주기', { game: 'mole', mode: 'plain', need: 15, time: 40, speed: 1.1, mole: '🦋', who: '수호', say: '누나! 꽃에서 나비가 쏙쏙 나와. 스페이스로 살짝 잡아 봐!' }],
     ['c9-03', '킥보드 달리기', { game: 'runner', need: 14, speed: 1.2, obstacle: '🍂', who: '선율이', say: '킥보드 타고 낙엽을 점프로 넘자!' }],
-    ['c9-04', '모래성 낱말 짝 맞추기', { game: 'memory', kind: 'word', pairs: 6, who: '수호', say: '누나, 모래성 쌓으면서 그림 낱말 짝 맞추기 하자!' }],
+    ['c9-04', '모래성 합성 놀이', { game: 'merge', set: 'sand', need: 6, who: '수호', say: '누나, 모래 두 개를 합치면 양동이가 되고, 계속 합치면 모래성이 돼!' }],
     ['c9-05', '아이스크림 거스름돈', { game: 'quiz', kind: 'sub2', n: 5, need: 4, who: '아빠', say: '아이스크림 사고 받을 거스름돈은 얼마일까?' }],
     ['c9-06', '다른 공 찾기', { game: 'oddcard', rounds: 3, size: 5, set: 'ball', who: '수호', say: '공 하나가 달라! 누나가 찾아 줘!' }],
     ['c9-07', '수호가 내는 받침 퀴즈', { game: 'batchim', n: 5, need: 4, who: '수호', say: '누나, 이거 받침 뭐야?' }],
