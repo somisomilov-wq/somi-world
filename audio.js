@@ -116,9 +116,10 @@
   // [음높이 0~2, 속도, 성별]. 같은 음성이라도 음높이로 나이와 성격을 나눔
   const VOICE = {
     '소미': [1.6, 1.08, 'f'], '하은이': [1.75, 1.1, 'f'], '소정이': [1.5, 1.05, 'f'], '안채은': [1.65, 1.08, 'f'], '문소리': [1.45, 1.1, 'f'],
-    '태린이': [1.7, 1.12, 'f'], '서연이': [1.55, 1.05, 'f'], '선율이': [1.45, 1.1, 'm'], '소율이': [1.7, 1.05, 'f'], '수호': [1.95, 1.0, 'm'],
+    '태린이': [1.7, 1.12, 'f'], '서연이': [1.55, 1.05, 'f'], '선율이': [1.65, 1.1, 'f'], '소율이': [1.7, 1.05, 'f'], '수호': [1.95, 1.0, 'm'],
     '양훈 오빠': [1.2, 1.05, 'm'], '엄마': [1.1, 0.98, 'f'], '아빠': [0.8, 0.95, 'm'], '선생님': [1.2, 0.95, 'f'], '관장님': [0.65, 0.95, 'm'],
-    '영양사 선생님': [1.05, 0.97, 'f'], '돌봄 선생님': [1.25, 0.96, 'f']
+    '영양사 선생님': [1.05, 0.97, 'f'], '돌봄 선생님': [1.25, 0.96, 'f'],
+    '주산 선생님': [1.15, 0.96, 'f'], '컴퓨터 선생님': [0.9, 1.0, 'm']
   };
   const synth = window.speechSynthesis;
   let koVoices = [];
@@ -158,7 +159,7 @@
   let VO = null; const sprites = {}, bytes = {}; let voSrcs = [], voToken = 0;
   // 파일 받기는 바로 시작(소미와 엄마 먼저), 소리로 바꾸기(decode)는 첫 터치/키 입력 뒤에
   const fetchBytes = src => bytes[src] || (bytes[src] = fetch(src).then(r => r.ok ? r.arrayBuffer() : null).catch(() => { delete bytes[src]; return null; }));
-  fetch('voice/voices.json').then(r => r.ok ? r.json() : null).then(j => {
+  fetch('voice/voices.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(j => {
     VO = j; if (!j) return;
     ['소미', '엄마', '하은이'].forEach(w => j[w] && fetchBytes(j[w].src));
     setTimeout(() => Object.values(j).forEach(v => fetchBytes(v.src)), 1500);
