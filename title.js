@@ -129,8 +129,7 @@
     else el.querySelector('.ttl-press').innerHTML = 'GET READY!<small>소미의 하루가 시작돼요</small>';
     setTimeout(() => {
       el.classList.add('out');
-      if (cont && ch >= 2 && ch <= 4) { if (window.SomiSound) SomiSound.music('world'); if (onStart) onStart('school'); }
-      else if (cont && ch >= 5 && window.SomiGames) { SomiGames.openHub(ch); SomiGames.afterClose = () => { if (onStart) onStart('school'); }; }
+      if (cont && ch >= 2) { if (window.SomiSound) SomiSound.music('world'); if (onStart) onStart('school'); }
       else { if (window.SomiSound) SomiSound.music('world'); if (onStart) onStart(); }
     }, 1100);
     setTimeout(() => el.remove(), 1700);
